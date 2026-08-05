@@ -78,10 +78,15 @@ test("失败、超时与异常均不自动重试且错误不泄露密钥", async
   await assert.rejects(() => secretAdapter.respond({ kind: "chat", message: "你好" }), /deepseek model unavailable/);
 });
 
-test("候选提取始终是固定代码，不使用真实模型", async () => {
-  const adapter = makeAdapter(() => { throw new Error("must not be called"); });
+test("候选提取仅意图分类，且失败时降级为固定 unknown 而非抛错", async () => {
+  const adapter = makeAdapter(() => { throw new Error("network down"); });
   const candidate = await adapter.extractCandidate({ message: "打开空气净化器" });
   assert.deepEqual(candidate, { intent: "unknown", entities: {}, evidence: "", source: "model", confidence: 0 });
+
+  const disabled = new DeepSeekModelAdapter({ apiKey: "k", enabled: false, fetchImpl: () => { throw new Error("must not be called"); } });
+  const disabledCandidate = await disabled.extractCandidate({ message: "打开空气净化器" });
+  assert.deepEqual(disabledCandidate, { intent: "unknown", entities: {}, evidence: "", source: "model", confidence: 0 });
+  assert.equal(disabled.available, false);
 });
 
 test("真实模型安全聊天回复进入 chat 且来源为 model", async () => {
@@ -214,4 +219,66 @@ test("本地 .env 仅加载 DEEPSEEK_* 且不覆盖已有环境变量", () => {
     }
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("候选意图分类请求使用严格 JSON 提示、低温和受限 token", async () => {
+  let captured;
+  const fetchImpl = async (url, options) => {
+    captured = { url, options, body: JSON.parse(options.body) };
+    return new Response(JSON.stringify({ choices: [{ message: { content: '{"intent":"device_control","confidence":0.95}' } }] }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  const adapter = makeAdapter(fetchImpl);
+  const candidate = await adapter.extractCandidate({ message: "Turn on the purifier" });
+  assert.deepEqual(candidate, { intent: "device_control", entities: {}, evidence: "Turn on the purifier", source: "model", confidence: 0.95 });
+  assert.equal(captured.body.max_tokens <= 128, true);
+  assert.equal(captured.body.temperature, 0);
+  assert.match(captured.body.messages[0].content, /意图分类|device_control/);
+  assert.equal(captured.body.messages[1].content, "Turn on the purifier");
+});
+
+test("候选意图分类异常输出均降级为固定 unknown 且不抛错", async () => {
+  const cases = [
+    { content: "not json", expect: "unknown" },
+    { content: '{"intent":"invented_intent","confidence":0.9}', expect: "unknown" },
+    { content: '{"intent":"task_stop","confidence":0.9}', expect: "task_stop" },
+    { content: '{"intent":"task_pause","confidence":1}', expect: "task_pause" },
+    { content: '{"confidence":0.9}', expect: "unknown" },
+  ];
+  for (const item of cases) {
+    const adapter = makeAdapter(okFetch(item.content));
+    const candidate = await adapter.extractCandidate({ message: "你好" });
+    assert.equal(candidate.intent, item.expect, item.content);
+    assert.equal(candidate.source, "model");
+    assert.equal(candidate.confidence >= 0 && candidate.confidence <= 1, true);
+  }
+
+  const badConfidence = makeAdapter(okFetch('{"intent":"chat","confidence":"abc"}'));
+  assert.equal((await badConfidence.extractCandidate({ message: "hi" })).confidence, 0);
+
+  const wrongShape = await makeAdapter(() => new Response("{}", { status: 200 })).extractCandidate({ message: "hi" });
+  assert.deepEqual(wrongShape, { intent: "unknown", entities: {}, evidence: "", source: "model", confidence: 0 });
+
+  const emptyMessage = await makeAdapter(() => { throw new Error("must not be called"); }).extractCandidate({ message: "   " });
+  assert.deepEqual(emptyMessage, { intent: "unknown", entities: {}, evidence: "", source: "model", confidence: 0 });
+});
+
+test("模型候选返回 unknown 时给引导性回复而非干巴巴拒绝", async () => {
+  const model = new DeepSeekModelAdapter({ apiKey: "k", enabled: true, fetchImpl: okFetch('{"intent":"unknown","confidence":0.1}') });
+  const { app, send } = harness({ model });
+  const result = await send("帮我弄得舒服点");
+  assert.equal(result.responseType, "chat");
+  assert.equal(result.error?.code, "INTENT_UNCLEAR");
+  assert.match(result.message.content, /没有执行任何操作/);
+  assert.match(result.message.content, /可以帮你/);
+  assert.match(result.message.content, /仅供参考/);
+  assert.equal(app.adapters.devices.commands.length, 0);
+});
+
+test("模型候选为受禁止状态变更时仍拒绝且不执行", async () => {
+  const model = new DeepSeekModelAdapter({ apiKey: "k", enabled: true, fetchImpl: okFetch('{"intent":"task_stop","confidence":0.9}') });
+  const { app, send } = harness({ model });
+  const result = await send("照你说的办");
+  assert.equal(result.responseType, "rejection");
+  assert.equal(result.error?.code, "INTENT_UNCLEAR");
+  assert.equal(app.adapters.devices.commands.length, 0);
 });

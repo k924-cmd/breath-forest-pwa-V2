@@ -3,7 +3,7 @@ import { createLocalAssistant } from "../index.js";
 
 export const DEFAULT_HTTP_HOST = "127.0.0.1";
 export const DEFAULT_HTTP_PORT = 8787;
-export const DEFAULT_ALLOWED_ORIGINS = Object.freeze(["http://localhost:4173", "http://127.0.0.1:4173"]);
+export const DEFAULT_ALLOWED_ORIGINS = Object.freeze(["http://localhost:4173", "http://127.0.0.1:4173", "http://localhost:4174", "http://127.0.0.1:4174"]);
 export const DEFAULT_MAX_BODY_BYTES = 64 * 1024;
 export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 
@@ -66,6 +66,13 @@ export function createHttpAssistantServer(options = {}) {
         requireMethod(request, "GET");
         const bootstrap = await assistant.getBootstrap(scopeId);
         if (!timedOut && !response.writableEnded) writeJson(response, 200, bootstrap, corsHeaders);
+        return;
+      }
+      if (pathname === "/v1/weather") {
+        requireMethod(request, "GET");
+        const city = new URL(request.url, "http://localhost").searchParams.get("city") || "杭州";
+        const result = await assistant.getWeather(city);
+        if (!timedOut && !response.writableEnded) writeJson(response, 200, result, corsHeaders);
         return;
       }
       if (pathname === "/v1/conversations/messages") {

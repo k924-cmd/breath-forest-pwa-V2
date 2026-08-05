@@ -34,6 +34,7 @@ export class AssistantService {
     Object.assign(this, dependencies);
     this.taskService = new TaskService(dependencies);
     this.taskSpecs = new Map();
+    this.realtime = dependencies.realtime ?? null;
   }
 
   async sendMessage(request, transport = {}) {
@@ -147,8 +148,46 @@ export class AssistantService {
       devices: this.registry.list(),
       environment,
       activeTask: this.taskService.current(scopeId),
+      realtime: this.realtime?.available === true ? { available: true, source: this.realtime.referenceId ?? "tavily" } : { available: false },
       mode: "local_mock",
       observedAt: this.clock.iso(),
+    };
+  }
+
+  async getWeather(city) {
+    const cityName = typeof city === "string" && city.trim() ? city.trim() : "杭州";
+    if (!this.realtime?.available) {
+      return { available: false, city: cityName, reason: "realtime_unavailable" };
+    }
+    let snapshot;
+    try {
+      snapshot = await this.realtime.search(`${cityName} 今天天气`);
+    } catch {
+      snapshot = null;
+    }
+    if (!snapshot || typeof snapshot.answer !== "string" || !snapshot.answer.trim()) {
+      return { available: false, city: cityName, reason: "realtime_failed" };
+    }
+    const answer = snapshot.answer.trim();
+    const tempMatch = answer.match(/(-?\d+(?:\.\d+)?)\s*(?:°|℃|度)/);
+    const lower = answer.toLowerCase();
+    let icon = "sun";
+    let condition = "晴";
+    if (/rain|drizzle|shower|storm|thunder|雨/.test(lower)) { icon = "rain"; condition = "雨"; }
+    else if (/cloud|overcast|haze|阴|多云/.test(lower)) { icon = "cloud"; condition = "多云"; }
+    else if (/snow|雪/.test(lower)) { icon = "snow"; condition = "雪"; }
+    else if (/wind|breeze|gust|风/.test(lower)) { icon = "wind"; condition = "风"; }
+    else if (/sunny|clear|fine|晴/.test(lower)) { icon = "sun"; condition = "晴"; }
+    return {
+      available: true,
+      city: cityName,
+      temp: tempMatch ? tempMatch[1] : null,
+      condition,
+      icon,
+      answer,
+      source: snapshot.source ?? "real_time",
+      referenceId: snapshot.referenceId ?? "tavily",
+      observedAt: snapshot.observedAt,
     };
   }
 
@@ -204,6 +243,7 @@ export class AssistantService {
     state.scopeId ??= transport.scopeId;
     this.#rememberMessage(state, "user", request.message);
     let route = localRoute(request.message);
+    let modelConsulted = false;
 
     if (request.continuation?.type === "clarification" && !state.pendingClarification) throw publicError("INVALID_REQUEST", "当前没有待澄清问题。", { requestId });
 
@@ -241,6 +281,7 @@ export class AssistantService {
     if (!route) {
       try {
         route = validateSemanticCandidate(await this.model.extractCandidate({ message: request.message }), request.message);
+        modelConsulted = true;
       } catch {
         this.#event("dependency_degraded", { requestId, conversationId: request.conversationId, properties: { dependency: "model", errorCode: "MODEL_UNAVAILABLE" } });
       }
@@ -248,7 +289,9 @@ export class AssistantService {
     if (!route || route.intent === "unknown") {
       if (route?.entities?.unsupported) return this.#rejection(request, requestId, "POLICY_REJECTED", "V1 不支持真实 DQN、真实 MQTT、自定义权重、真实收益声明或绕过安全规则。", ["请选择舒适优先、均衡自动或低碳优先的模拟优化。"]);
       if (route?.entities?.historicalReference) return this.#rejection(request, requestId, "INTENT_UNCLEAR", "V1 不恢复跨日或跨会话的历史方案，请重新选择场景或模拟优化模式。", []);
-      return this.#rejection(request, requestId, "INTENT_UNCLEAR", "我无法可靠理解该请求，因此没有执行任何操作。请使用明确的设备、动作或查询表达。", []);
+      if (route?.entities?.forbiddenModelMutation) return this.#rejection(request, requestId, "INTENT_UNCLEAR", "该操作不在 V1 允许范围内。请使用明确的设备、动作或查询表达。", []);
+      if (!modelConsulted) return this.#rejection(request, requestId, "INTENT_UNCLEAR", "我无法可靠理解该请求，因此没有执行任何操作。请使用明确的设备、动作或查询表达。", []);
+      return this.#unknownGuidance(request, requestId);
     }
 
     state.topic = route.intent;
@@ -256,6 +299,7 @@ export class AssistantService {
       case "chat": return this.#chat(request, requestId);
       case "knowledge_query": return this.#knowledge(request, requestId, route);
       case "weather_query": return this.#rejection(request, requestId, "ENVIRONMENT_UNAVAILABLE", "V1 暂无可信的外部实时天气或室外数据源，无法提供室外数值或天气预报；室内环境与设备查询仍可使用可信快照。", []);
+      case "real_time_query": return this.#realTimeQuery(request, requestId);
       case "environment_query": return this.#environment(request, requestId, route);
       case "device_query": return this.#deviceQuery(state, request, requestId, route);
       case "device_control": return this.#deviceControl(state, request, transport, requestId, route);
@@ -327,6 +371,20 @@ export class AssistantService {
       && value.pm25 >= 0 && value.co2 >= 0 && value.humidity >= 0 && value.humidity <= 100 && value.score >= 0 && value.score <= 100
       && typeof value.status === "string" && value.status.length > 0 && value.status.length <= 120
       && !Number.isNaN(new Date(value.observedAt).getTime()) && ["mock", "replay", "sensor"].includes(value.source) && ["fresh", "stale"].includes(value.freshness);
+  }
+
+  async #realTimeQuery(request, requestId) {
+    if (!this.realtime?.available) {
+      return this.#rejection(request, requestId, "ENVIRONMENT_UNAVAILABLE", "实时天气或室外数据源尚未接入，无法提供室外数值或天气预报；室内环境与设备查询仍可使用可信快照。", []);
+    }
+    let snapshot;
+    try { snapshot = await this.realtime.search(request.message); } catch { snapshot = null; }
+    if (!snapshot || typeof snapshot.answer !== "string") {
+      this.#event("dependency_degraded", { requestId, conversationId: request.conversationId, properties: { dependency: "realtime", errorCode: "REALTIME_UNAVAILABLE" } });
+      return this.#rejection(request, requestId, "ENVIRONMENT_UNAVAILABLE", "实时搜索服务暂时不可用，无法提供实时天气或室外信息，请稍后再试。", []);
+    }
+    const content = `实时信息：${snapshot.answer}`;
+    return this.#response(request, requestId, "real_time", content, [sourceRef("real_time", snapshot.observedAt, snapshot.referenceId ?? "tavily")], { realtime: snapshot });
   }
 
   #resolveDevice(state, route, fullText) {
@@ -691,6 +749,13 @@ export class AssistantService {
     return this.#response(request, requestId, "clarification", prompt, [sourceRef("rule", now)], { clarification: publicClarification, error: { code: "CLARIFICATION_REQUIRED", message: prompt, retryable: false, requestId } });
   }
 
+  #unknownGuidance(request, requestId) {
+    // Model / rule fallback reached a genuine unknown intent. Do not pretend to
+    // understand or act; instead guide the user to what Luna can reliably do.
+    const content = `我还没有完全理解你的意思，所以没有执行任何操作。我可以帮你：查询室内空气（如“现在空气怎么样”）、控制设备（如“打开空气净化器”）、了解空气知识（如“PM2.5 是什么”）、管理任务（如“当前任务”或“暂停任务”），或启动模拟优化（如“舒适优先优化”）。也可以直接和我闲聊。请试着换一种问法。`;
+    return this.#response(request, requestId, "chat", composeReplyText(content, detectHealthTopic(request.message)), [sourceRef("rule", this.clock.iso())], { error: { code: "INTENT_UNCLEAR", message: "无法可靠识别意图，已引导用户重新表达。", retryable: false, requestId } });
+  }
+
   #rejection(request, requestId, code, message, alternatives) {
     const content = alternatives.length ? `${message} 可选操作：${alternatives.join("；")}` : message;
     return this.#response(request, requestId, "rejection", content, [sourceRef("rule", this.clock.iso())], { error: { code, message, retryable: ["DEVICE_UNAVAILABLE", "OPTIMIZER_UNAVAILABLE"].includes(code), requestId } });
@@ -737,3 +802,4 @@ export class AssistantService {
     this.#event("task_state_changed", { taskId: task.taskId, properties: { taskType: task.type, fromStatus, toStatus: task.status, isSimulation: task.isSimulation } });
   }
 }
+

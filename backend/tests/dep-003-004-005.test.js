@@ -106,6 +106,44 @@ test("AC-095 实时天气或室外数值无可信来源时拒绝且不编造室�
   assert.match(indoor.message.content, /PM2\.5 18/);
 });
 
+test("AC-095b 配置实时搜索后，天气/室外查询走 Tavily 并返回实时信息", async () => {
+  const fakeRealtime = {
+    available: true,
+    referenceId: "tavily",
+    search: async (query) => ({
+      answer: "杭州今天晴，26°C，AQI 良好。",
+      results: [{ title: "杭州天气", url: "https://example.com/hz-weather", content: "晴 26°C" }],
+      query,
+      source: "real_time",
+      referenceId: "tavily",
+      observedAt: "2026-08-05T12:00:00.000Z",
+    }),
+  };
+  const { send } = harness({ realtime: fakeRealtime });
+  for (const question of ["今天天气怎么样", "天气预报", "室外 PM2.5 是多少", "AQI 是多少"]) {
+    const result = await send(question);
+    assert.equal(result.responseType, "real_time", question);
+    assert.match(result.message.content, /实时信息：杭州今天晴，26°C，AQI 良好。/);
+    assert.equal(result.sources[0].type, "real_time");
+    assert.ok(result.realtime, question);
+    assert.equal(result.realtime.source, "real_time");
+    assert.doesNotMatch(result.message.content, /PM2\.5 18|CO2 720|湿度 48|温度 24/, question);
+  }
+});
+
+test("AC-095c 实时搜索服务失败时降级为拒绝且不编造", async () => {
+  const failingRealtime = {
+    available: true,
+    referenceId: "tavily",
+    search: async () => null,
+  };
+  const { send } = harness({ realtime: failingRealtime });
+  const result = await send("今天天气怎么样");
+  assert.equal(result.responseType, "rejection");
+  assert.equal(result.error?.code, "ENVIRONMENT_UNAVAILABLE");
+  assert.match(result.message.content, /无法提供|不可用/);
+});
+
 test("AC-096 超长输入在语义路由、历史方案检查与模型调用之前返回 INPUT_TOO_LONG", async () => {
   const model = new FakeModelAdapter();
   const devices = new FakeDeviceAdapter();
@@ -216,4 +254,42 @@ test("DEP-005 回执与时间字段数据完整且为有效 ISO 时间", async (
 
   const device = await send("空气净化器状态怎么样");
   assert.equal(Number.isNaN(new Date(device.sources[0].observedAt).getTime()), false);
+});
+
+test("AC-098 getWeather 返回结构化天气数据", async () => {
+  const fakeRealtime = {
+    available: true,
+    referenceId: "tavily",
+    search: async (query) => ({
+      answer: "杭州今天多云，26°C，湿度 60%。",
+      results: [{ title: "杭州天气", url: "https://example.com/hz", content: "多云 26°C" }],
+      query,
+      source: "real_time",
+      referenceId: "tavily",
+      observedAt: "2026-08-05T12:00:00.000Z",
+    }),
+  };
+  const { app } = harness({ realtime: fakeRealtime });
+  const result = await app.getWeather("杭州");
+  assert.equal(result.available, true);
+  assert.equal(result.city, "杭州");
+  assert.equal(result.temp, "26");
+  assert.equal(result.condition, "多云");
+  assert.equal(result.icon, "cloud");
+  assert.ok(result.observedAt);
+});
+
+test("AC-098b getWeather 无实时适配器时降级", async () => {
+  const { app } = harness();
+  const result = await app.getWeather("杭州");
+  assert.equal(result.available, false);
+  assert.equal(result.reason, "realtime_unavailable");
+});
+
+test("AC-098c getWeather 搜索失败时降级", async () => {
+  const failingRealtime = { available: true, referenceId: "tavily", search: async () => null };
+  const { app } = harness({ realtime: failingRealtime });
+  const result = await app.getWeather("杭州");
+  assert.equal(result.available, false);
+  assert.equal(result.reason, "realtime_failed");
 });

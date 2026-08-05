@@ -1,9 +1,9 @@
 import { clone } from "../core/utils.js";
 
 const initialDevices = [
-  { id: "purifier-living", type: "air_purifier", name: "客厅空气净化器", aliases: ["空气净化器", "净化器", "客厅净化器"], room: "客厅", connectionStatus: "online", controlSupport: "supported", availableActions: ["turn_on", "turn_off"], state: "off", stateVersion: 1, source: "mock" },
-  { id: "window-living", type: "smart_window", name: "客厅智能窗户", aliases: ["智能窗户", "窗户", "窗"], room: "客厅", connectionStatus: "online", controlSupport: "supported", availableActions: ["open", "close"], state: "closed", stateVersion: 1, source: "mock" },
-  { id: "hood-kitchen", type: "range_hood", name: "厨房抽油烟机", aliases: ["抽油烟机", "油烟机"], room: "厨房", connectionStatus: "online", controlSupport: "supported", availableActions: ["turn_on", "turn_off"], state: "off", stateVersion: 1, source: "mock" },
+  { id: "purifier-living", type: "air_purifier", name: "客厅空气净化器", aliases: ["空气净化器", "净化器", "客厅净化器", "purifier", "air purifier"], room: "客厅", connectionStatus: "online", controlSupport: "supported", availableActions: ["turn_on", "turn_off"], state: "off", stateVersion: 1, source: "mock" },
+  { id: "window-living", type: "smart_window", name: "客厅智能窗户", aliases: ["智能窗户", "窗户", "窗", "window", "smart window"], room: "客厅", connectionStatus: "online", controlSupport: "supported", availableActions: ["open", "close"], state: "closed", stateVersion: 1, source: "mock" },
+  { id: "hood-kitchen", type: "range_hood", name: "厨房抽油烟机", aliases: ["抽油烟机", "油烟机", "hood", "range hood"], room: "厨房", connectionStatus: "online", controlSupport: "supported", availableActions: ["turn_on", "turn_off"], state: "off", stateVersion: 1, source: "mock" },
   { id: "fresh-air", type: "fresh_air", name: "新风系统", aliases: ["新风", "新风系统"], room: "全屋", connectionStatus: "unavailable", controlSupport: "not_integrated", availableActions: [], state: "unknown", stateVersion: 0, source: "mock" },
   { id: "humidifier", type: "humidifier", name: "加湿器", aliases: ["加湿器"], room: "客厅", connectionStatus: "unavailable", controlSupport: "not_integrated", availableActions: [], state: "unknown", stateVersion: 0, source: "mock" },
   { id: "circulation-fan", type: "circulation_fan", name: "循环风机", aliases: ["循环风机", "循环扇"], room: "客厅", connectionStatus: "unavailable", controlSupport: "not_integrated", availableActions: [], state: "unknown", stateVersion: 0, source: "mock" },

@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 
-const DEEPSEEK_PREFIX = "DEEPSEEK_";
+const LOADED_PREFIXES = ["DEEPSEEK_", "TAVILY_"];
 
 /**
- * Minimal local .env loader. Only DEEPSEEK_* keys are loaded, existing
+ * Minimal local .env loader. Only whitelisted prefixes are loaded, existing
  * process environment values are never overwritten, and no value is logged
  * or printed. Missing files are ignored so defaults keep working.
  */
@@ -20,7 +20,7 @@ export function loadDotEnvIfPresent(path) {
     const match = /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(trimmed);
     if (!match) continue;
     const key = match[1];
-    if (!key.startsWith(DEEPSEEK_PREFIX) || process.env[key] !== undefined) continue;
+    if (!LOADED_PREFIXES.some((prefix) => key.startsWith(prefix)) || process.env[key] !== undefined) continue;
     process.env[key] = match[2].trim();
   }
 }

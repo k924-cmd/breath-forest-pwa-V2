@@ -203,3 +203,15 @@ test("HTTP 未处理异常使用稳定公开错误且不泄露内部信息", asy
   assert.equal(body.retryable, true);
   assert.doesNotMatch(JSON.stringify(body), /credential|conversation|service\.js|stack|node:|at\s+\w+/i);
 });
+
+test("GET /v1/weather 无实时适配器时降级返回", async (context) => {
+  const service = createHttpAssistantServer({ port: 0 });
+  const address = await service.start();
+  context.after(() => service.close());
+
+  const { response, body } = await jsonResponse(`${address.url}/v1/weather?city=${encodeURIComponent("杭州")}`);
+  assert.equal(response.status, 200);
+  assert.equal(body.available, false);
+  assert.equal(body.city, "杭州");
+  assert.equal(body.reason, "realtime_unavailable");
+});
