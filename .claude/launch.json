@@ -1,0 +1,21 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend-4173",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "4173"],
+      "cwd": "frontend",
+      "port": 4173,
+      "autoPort": false
+    },
+    {
+      "name": "frontend-4174",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "4174"],
+      "cwd": "frontend",
+      "port": 4174,
+      "autoPort": false
+    }
+  ]
+}
