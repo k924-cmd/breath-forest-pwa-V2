@@ -5,6 +5,9 @@
 *.log
 .tmp/
 
+# Claude Code worktrees (managed by main agent)
+.claude/worktrees/
+
 # Secrets and local environment config (never committed)
 .env
 .env.*
