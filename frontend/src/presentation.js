@@ -10,6 +10,7 @@ const RESPONSE_PRESENTATIONS = {
   knowledge: { icon: 'i', label: '知识回复', tone: 'info' },
   environment_status: { icon: '⌁', label: '环境状态', tone: 'info' },
   device_status: { icon: '⌂', label: '设备状态', tone: 'info' },
+  real_time: { icon: '↗', label: '实时信息', tone: 'realtime' },
   clarification: { icon: '?', label: '需要澄清', tone: 'clarification' },
   confirmation: { icon: '✓', label: '待确认', tone: 'confirmation' },
   task_status: { icon: '◷', label: '任务状态', tone: 'task' },
@@ -73,7 +74,7 @@ export function getActionLabel(action) {
 }
 
 export function getSourceLabel(source) {
-  return ({ mock: 'Mock', replay: 'Replay', sensor: '传感器', device: '设备', rule: '规则', model: '模型', template: '模板' })[source] || '未知来源';
+  return ({ mock: 'Mock', replay: 'Replay', sensor: '传感器', device: '设备', rule: '规则', model: '模型', template: '模板', real_time: '实时' })[source] || '未知来源';
 }
 
 export function getTaskName(task) {

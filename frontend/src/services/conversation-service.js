@@ -1,4 +1,4 @@
-import { getMockReply } from '../mocks/conversation.js?v=20260804-1';
+import { getMockReply } from '../mocks/conversation.js?v=20260806-8';
 
 export const API_BASE_URL = 'http://127.0.0.1:8787/v1';
 export const CONTRACT_VERSION = '1.0.0';

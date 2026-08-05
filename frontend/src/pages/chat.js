@@ -1,5 +1,5 @@
-import { icon } from '../components/icons.js?v=20260804-1';
-import { getConnectionPresentation, getSourceLabel, getTaskName, getTaskPresentation } from '../presentation.js?v=20260804-1';
+import { icon } from '../components/icons.js?v=20260806-8';
+import { getConnectionPresentation, getSourceLabel, getTaskName, getTaskPresentation } from '../presentation.js?v=20260806-8';
 
 function activeTaskCard(task) {
   if (!task) return '';
@@ -10,7 +10,7 @@ function activeTaskCard(task) {
 export function chatPage(state) {
   const connection = getConnectionPresentation(state.connection);
   return `<section class="page chat-page ${state.tab === 'chat' ? 'active' : ''}">
-    <header class="chat-header"><img src="assets/luna-hero.webp" alt="Luna"><div><span class="eyebrow">LUNA · BREATH COMPANION</span><h1>和 Luna 聊聊</h1><p class="connection-copy ${connection.tone}">${connection.icon} ${connection.label}</p></div><button class="circle-btn" data-toast="${connection.detail}">${icon('more')}</button></header>
+    <header class="chat-header"><div class="chat-bot-avatar" role="img" aria-label="AI 助手"></div><div><span class="eyebrow">LUNA · BREATH COMPANION</span><h1>和 Luna 聊聊</h1><p class="connection-copy ${connection.tone}">${connection.icon} ${connection.label}</p></div><button class="circle-btn" data-toast="${connection.detail}">${icon('more')}</button></header>
     <div class="active-task-slot">${activeTaskCard(state.activeTask)}</div>
     <div class="messages" aria-live="polite"></div>
     <div class="prompt-row"><button class="prompt">你好 Luna</button><button class="prompt">现在空气怎么样</button><button class="prompt">设备可以使用吗</button></div>

@@ -1,4 +1,4 @@
-import { createMockDevices } from '../mocks/devices.js?v=20260804-1';
+import { createMockDevices } from '../mocks/devices.js?v=20260806-8';
 
 export const STORAGE_KEY = 'breathForestUiV2';
 
@@ -26,6 +26,8 @@ function createMessage(role, text, details = {}) {
 const stored = readStoredState();
 
 export const state = {
+  view: 'intro',
+  loggedIn: false,
   tab: 'home',
   deviceView: stored.deviceView === 'grid' ? 'grid' : 'list',
   devices: createMockDevices(),
@@ -38,6 +40,7 @@ export const state = {
     mode: 'ui_mock',
     label: '正在连接本地后端'
   },
+  realtime: { available: false },
   activeTask: null,
   profile: {
     name: stored.profile?.name || '林知夏',

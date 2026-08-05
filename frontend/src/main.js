@@ -1,29 +1,34 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260804-1';
-import { icon } from './components/icons.js?v=20260804-1';
-import { homePage } from './pages/home.js?v=20260804-1';
-import { devicesPage } from './pages/devices.js?v=20260804-1';
-import { chatPage } from './pages/chat.js?v=20260804-1';
-import { profilePage } from './pages/profile.js?v=20260804-1';
-import { loadBackendSnapshot, sendConversationMessage } from './services/conversation-service.js?v=20260804-1';
-import { toggleMockDevice } from './services/device-service.js?v=20260804-1';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260804-1';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260804-1';
-import { escapeHtml } from './utils/html.js?v=20260804-1';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260804-1';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260806-8';
+import { icon } from './components/icons.js?v=20260806-8';
+import { homePage } from './pages/home.js?v=20260806-8';
+import { devicesPage } from './pages/devices.js?v=20260806-8';
+import { chatPage } from './pages/chat.js?v=20260806-8';
+import { profilePage } from './pages/profile.js?v=20260806-8';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260806-8';
+import { loginPage } from './components/login.js?v=20260806-8';
+import { login, isLoggedIn } from './auth/auth.js?v=20260806-8';
+import { loadBackendSnapshot, sendConversationMessage } from './services/conversation-service.js?v=20260806-8';
+import { fetchWeather } from './services/weather-service.js?v=20260806-8';
+import { toggleMockDevice } from './services/device-service.js?v=20260806-8';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260806-8';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260806-8';
+import { escapeHtml } from './utils/html.js?v=20260806-8';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260806-8';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260804-1';
+} from './presentation.js?v=20260806-8';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
 let activeDeviceId = null;
+let weather = null;
 
 function tabs() {
-  return `<nav class="tabs">${[
+  return `<nav class="tabs"><button class="tabs-devices" data-tab="devices">全部设备 <small>›</small></button><div class="tabs-grid">${[
     ['home', 'home', '首页'], ['devices', 'devices', '设备'], ['chat', 'chat', 'AI 对话'], ['profile', 'user', '我的']
-  ].map(([id, glyph, label]) => `<button class="tab ${state.tab === id ? 'active' : ''}" data-tab="${id}">${icon(glyph)}<span>${label}</span></button>`).join('')}</nav>`;
+  ].map(([id, glyph, label]) => `<button class="tab ${state.tab === id ? 'active' : ''}" data-tab="${id}">${icon(glyph)}<span>${label}</span></button>`).join('')}</div></nav>`;
 }
 
 function logsModal() {
@@ -58,6 +63,39 @@ function deviceDetailModal(deviceId) {
 }
 
 const renderedMessageSignatures = new Map();
+
+function loadLottie(container, path, { loop = true, autoplay = true } = {}) {
+  if (!container || container.dataset.lottieReady === 'true') return;
+  const lottie = window.lottie;
+  if (!lottie || typeof lottie.loadAnimation !== 'function') {
+    container.classList.add('lottie-fallback');
+    container.dataset.lottieReady = 'true';
+    return;
+  }
+  container.dataset.lottieReady = 'true';
+  lottie.loadAnimation({
+    container,
+    renderer: 'svg',
+    loop,
+    autoplay,
+    path
+  });
+}
+
+function initIntroLottie() {
+  const container = document.querySelector('#intro-stage');
+  if (container) loadLottie(container, 'assets/start-robot.json', { loop: false, autoplay: true });
+}
+
+function initHomeLottie() {
+  const container = document.querySelector('#lottie-stage');
+  if (container) loadLottie(container, 'assets/start-robot.json');
+}
+
+function initNoteLottie() {
+  const container = document.querySelector('#note-lottie');
+  if (container) loadLottie(container, 'assets/ai-flow.json');
+}
 
 function renderMessages() {
   const container = document.querySelector('.messages');
@@ -100,9 +138,22 @@ function renderMessages() {
 }
 
 function render() {
-  root.innerHTML = `<main class="app ${state.tab === 'home' ? 'home-mode' : ''} ${state.tab === 'chat' ? 'chat-mode' : ''}">${homePage(state, environment)}${devicesPage(state)}${chatPage(state)}${profilePage(state)}</main>${tabs()}<div id="toast" class="toast"></div><div id="modal-root"></div><div id="effect-root"></div>`;
+  if (state.view === 'intro') {
+    root.innerHTML = introPage();
+    bind();
+    initIntroLottie();
+    return;
+  }
+  if (state.view === 'login') {
+    root.innerHTML = loginPage();
+    bind();
+    return;
+  }
+  root.innerHTML = `<main class="app ${state.tab === 'home' ? 'home-mode' : ''} ${state.tab === 'chat' ? 'chat-mode' : ''}">${homePage(state, environment, state.realtime, weather)}${devicesPage(state)}${chatPage(state)}${profilePage(state)}</main>${tabs()}<div id="toast" class="toast"></div><div id="modal-root"></div><div id="effect-root"></div>`;
   renderMessages();
   bind();
+  initHomeLottie();
+  initNoteLottie();
   if (activeDeviceId) openDeviceDetail(activeDeviceId);
   if (state.tab === 'chat') requestAnimationFrame(() => scrollChat(true));
 }
@@ -133,6 +184,7 @@ async function useUiMockSnapshot() {
   state.connection = { status: 'disconnected', mode: 'ui_mock', label: '本地 UI Mock / 未连接后端' };
   state.devices = createMockDevices();
   state.activeTask = null;
+  state.realtime = { available: false };
   environment = await getEnvironmentSnapshot();
   const intro = state.messages[0];
   if (intro?.role === 'assistant') {
@@ -149,6 +201,7 @@ async function connectBackend({ quiet = false } = {}) {
     state.devices = normalizeBackendDevices(bootstrap.devices);
     environment = bootstrap.environment ? { ...bootstrap.environment, uiMockOnly: false } : null;
     state.activeTask = bootstrap.activeTask;
+    state.realtime = bootstrap.realtime || { available: false };
     const intro = state.messages[0];
     if (intro?.role === 'assistant') {
       intro.content = '你好，我是 Luna。已连接本地后端 Mock，设备、环境与任务已从后端快照同步。';
@@ -162,6 +215,14 @@ async function connectBackend({ quiet = false } = {}) {
   }
   saveState();
   render();
+  refreshWeather();
+}
+
+async function refreshWeather() {
+  const city = state.profile?.city || '杭州';
+  weather = await fetchWeather(city);
+  const home = document.querySelector('.home-weather');
+  if (home) render();
 }
 
 async function updateDevice(deviceId) {
@@ -199,6 +260,7 @@ function applyConversationResponse(pending, response) {
     createdAt: reply.createdAt || new Date().toISOString(),
     responseType: response.responseType,
     sources: response.sources || [],
+    realtime: response.realtime,
     clarification: response.clarification,
     confirmation: response.confirmation,
     task: response.task,
@@ -282,8 +344,10 @@ function showSceneEffect(scene) {
     '低碳模式': ['eco', '低碳模式 · UI Mock', '未创建后端任务']
   };
   const [kind, title, copy] = styles[scene];
+  const button = document.querySelector(`.scene-grid button[data-scene="${CSS.escape(scene)}"]`);
+  button?.classList.add('glow');
   document.querySelector('#effect-root').innerHTML = `<div class="scene-effect ${kind}"><div><span>${icon(kind === 'sleep' ? 'leaf' : kind === 'eco' ? 'spark' : kind === 'breathe' ? 'wind' : 'home')}</span><b>${title}</b><small>${copy}</small></div></div>`;
-  setTimeout(() => { document.querySelector('#effect-root').innerHTML = ''; }, 1700);
+  setTimeout(() => { button?.classList.remove('glow'); document.querySelector('#effect-root').innerHTML = ''; }, 1700);
 }
 
 function bindModal() {
@@ -331,7 +395,13 @@ function bindModal() {
 
 function bind() {
   document.querySelectorAll('[data-tab]').forEach(button => {
-    button.onclick = () => { state.tab = button.dataset.tab; render(); };
+    button.onclick = () => {
+      const next = button.dataset.tab;
+      if (next === state.tab) return;
+      state.tab = next;
+      render();
+      if (next === 'home') refreshWeather();
+    };
   });
   document.querySelectorAll('[data-device]').forEach(input => {
     input.onchange = () => updateDevice(input.dataset.device);
@@ -370,13 +440,13 @@ function bind() {
   });
   document.querySelectorAll('[data-action="luna"]').forEach(button => {
     button.onclick = () => {
-      const anchor = button.closest('.luna-anchor');
-      const leaves = anchor.nextElementSibling;
-      const isOut = button.classList.toggle('is-out');
-      anchor.classList.toggle('is-out', isOut);
-      button.setAttribute('aria-expanded', String(isOut));
-      leaves.classList.toggle('is-active', isOut);
-      toast(isOut ? 'Luna 走出来和你打招呼' : 'Luna 回到森林角落');
+      const anchor = button.closest('.home-bot') || button.closest('.luna-anchor');
+      if (!anchor) return;
+      anchor.classList.remove('luna-hop');
+      // 强制回流以重启动画
+      void anchor.offsetWidth;
+      anchor.classList.add('luna-hop');
+      toast('Luna 和你打招呼');
     };
   });
   document.querySelectorAll('.prompt').forEach(button => {
@@ -391,10 +461,61 @@ function bind() {
   document.querySelector('#chat-form')?.addEventListener('submit', event => {
     event.preventDefault();
     const input = document.querySelector('#chat-input');
-    if (input.value.trim()) sendMessage(input.value.trim());
+    const text = input.value.trim();
+    if (text) {
+      sendMessage(text);
+      input.value = '';
+    }
+  });
+  document.querySelector('#login-form')?.addEventListener('submit', event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const result = login(form.elements.username.value, form.elements.password.value);
+    const error = document.querySelector('#login-error');
+    if (!result.ok) {
+      if (error) error.textContent = result.error;
+      form.classList.add('shake');
+      setTimeout(() => form.classList.remove('shake'), 500);
+      return;
+    }
+    if (error) error.textContent = '';
+    state.loggedIn = true;
+    state.view = 'app';
+    render();
+    connectBackend();
   });
   document.querySelectorAll('[data-toast]').forEach(button => {
     button.onclick = () => toast(button.dataset.toast);
+  });
+
+  // 对话气泡：长按放大 + 波动，达到阈值松手后跳转 AI 对话
+  document.querySelectorAll('.home-note').forEach(note => {
+    const lottie = note.querySelector('.note-lottie');
+    let pressTimer = null;
+    let longPressTriggered = false;
+    const start = (event) => {
+      if (event.cancelable) event.preventDefault();
+      longPressTriggered = false;
+      lottie?.classList.remove('released');
+      clearTimeout(pressTimer);
+      pressTimer = setTimeout(() => {
+        longPressTriggered = true;
+        lottie?.classList.add('pressed');
+      }, 500);
+    };
+    const end = (event) => {
+      clearTimeout(pressTimer);
+      if (longPressTriggered) {
+        lottie?.classList.remove('pressed');
+        lottie?.classList.add('released');
+        state.tab = 'chat';
+        render();
+      }
+    };
+    note.addEventListener('pointerdown', start);
+    note.addEventListener('pointerup', end);
+    note.addEventListener('pointercancel', end);
+    note.addEventListener('pointerleave', end);
   });
 }
 
@@ -407,5 +528,24 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-render();
-await connectBackend();
+function startIntro() {
+  state.view = 'intro';
+  render();
+  const slogan = document.querySelector('.intro-slogan');
+  setTimeout(() => slogan?.classList.add('show'), 700);
+  setTimeout(() => {
+    state.view = isLoggedIn() ? 'app' : 'login';
+    if (state.view === 'app') state.loggedIn = true;
+    render();
+    if (state.view === 'app') connectBackend();
+  }, 3200);
+}
+
+if (isLoggedIn()) {
+  state.loggedIn = true;
+  state.view = 'app';
+  render();
+  await connectBackend();
+} else {
+  startIntro();
+}

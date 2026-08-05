@@ -55,6 +55,7 @@ test('前端模块图的相对 JS 导入全部使用入口版本号', async () =
 
 test('旧 Service Worker 控制页面时，入口独立注销并只清理呼吸森林缓存后重载', async () => {
   const html = await readFrontendFile('index.html');
+  const version = inlineBootstrap(html).match(/APP_VERSION = '([^']+)'/)?.[1];
   const events = [];
   const context = {
     URL,
@@ -94,6 +95,6 @@ test('旧 Service Worker 控制页面时，入口独立注销并只清理呼吸�
   assert.deepEqual(events.slice(0, 3), ['unregister', 'cache-keys', 'delete:breath-forest-ui-v2']);
   assert.equal(events.some(event => event === 'delete:another-app-cache'), false);
   const replacement = events.find(event => event.startsWith('replace:'));
-  assert.match(replacement, /bf-bootstrap=20260804-1/);
+  assert.match(replacement, new RegExp(`bf-bootstrap=${version}`));
   assert.equal(events.some(event => event.startsWith('error:')), false);
 });

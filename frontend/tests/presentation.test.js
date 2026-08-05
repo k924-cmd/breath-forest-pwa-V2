@@ -21,7 +21,12 @@ const state = {
 test('四页面均显示后端断开边界，快捷场景不映射后端任务', () => {
   const environment = { score: 84, status: '空气良好', pm25: 12, co2: 650, humidity: 60, temperature: 26, source: 'mock', observedAt: '2026-08-03T00:00:00.000Z' };
   assert.match(homePage(state, environment), /本地 UI Mock \/ 未连接后端/);
-  assert.match(homePage(state, environment), /仅 UI Mock，不创建后端任务/);
+  assert.match(homePage(state, environment), /实时情况 · 本地模拟/);
+  assert.match(homePage(state, environment), /home-cards/);
+  assert.doesNotMatch(homePage(state, environment), /home-nav-card/);
+  assert.match(homePage(state, environment), /home-weather/);
+  assert.match(homePage(state, environment), /26℃/);
+  assert.match(homePage(state, environment), /清新自在/);
   assert.match(devicesPage({ ...state, tab: 'devices' }), /本地 UI Mock \/ 未连接后端/);
   assert.match(chatPage({ ...state, tab: 'chat' }), /本地 UI Mock \/ 未连接后端/);
   assert.match(profilePage({ ...state, tab: 'profile' }), /本地 UI Mock \/ 未连接后端/);

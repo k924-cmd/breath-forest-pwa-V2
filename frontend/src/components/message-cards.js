@@ -1,4 +1,4 @@
-import { escapeHtml } from '../utils/html.js?v=20260804-1';
+import { escapeHtml } from '../utils/html.js?v=20260806-8';
 import {
   formatObservedAt,
   getActionLabel,
@@ -9,7 +9,7 @@ import {
   getTaskName,
   getTaskPresentation,
   splitDisclaimerContent
-} from '../presentation.js?v=20260804-1';
+} from '../presentation.js?v=20260806-8';
 
 function findDevice(deviceId, devices) {
   return (Array.isArray(devices) ? devices : []).find(device => device.id === deviceId);
@@ -72,9 +72,15 @@ export function contentHtml(content) {
   return `<p>${escapeHtml(main)}</p>${disclaimerBlock}`;
 }
 
+export function realTimeHtml(realtime) {
+  if (!realtime) return '';
+  const results = Array.isArray(realtime.results) ? realtime.results : [];
+  return `<section class="message-card realtime-card"><header><span>↗</span><b>实时引擎 · Tavily</b><strong>${formatObservedAt(realtime.observedAt)}</strong></header>${realtime.query ? `<small>查询：${escapeHtml(realtime.query)}</small>` : ''}${results.length ? `<div class="realtime-results">${results.slice(0, 3).map(item => item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title || item.url)}</a>` : `<span>${escapeHtml(item.title || '')}</span>`).join('')}</div>` : ''}</section>`;
+}
+
 export function structuredMessageHtml(message, devices) {
   const presentation = message.role === 'assistant' ? getResponsePresentation(message.responseType) : null;
-  return `<div class="message-block ${message.role === 'user' ? 'user' : 'assistant'}" data-message-id="${escapeHtml(message.id)}"><div class="bubble ${message.role === 'user' ? 'user' : ''}${message.status === 'pending' ? ' streaming' : ''}${message.status === 'error' ? ' bubble-error' : ''}">${presentation ? `<span class="response-label ${presentation.tone}">${presentation.icon} ${presentation.label}</span>` : ''}${contentHtml(message.content)}</div>${confirmationHtml(message.confirmation)}${clarificationHtml(message.clarification)}${taskHtml(message.task)}${receiptHtml(message.receipt, devices)}${errorHtml(message.error, message.responseType)}${sourcesHtml(message.sources, message.sourceMode)}</div>`;
+  return `<div class="message-block ${message.role === 'user' ? 'user' : 'assistant'}" data-message-id="${escapeHtml(message.id)}"><div class="bubble ${message.role === 'user' ? 'user' : ''}${message.status === 'pending' ? ' streaming' : ''}${message.status === 'error' ? ' bubble-error' : ''}">${presentation ? `<span class="response-label ${presentation.tone}">${presentation.icon} ${presentation.label}</span>` : ''}${contentHtml(message.content)}</div>${confirmationHtml(message.confirmation)}${clarificationHtml(message.clarification)}${taskHtml(message.task)}${receiptHtml(message.receipt, devices)}${realTimeHtml(message.realtime)}${errorHtml(message.error, message.responseType)}${sourcesHtml(message.sources, message.sourceMode)}</div>`;
 }
 
 export function messageSignature(message) {
