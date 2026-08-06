@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  API_BASE_URL,
   createSendMessageRequest,
+  getApiBaseUrl,
   getConversationId,
   loadBackendSnapshot,
   sendConversationMessage
@@ -62,7 +62,7 @@ test('启动严格按 health 再 bootstrap 获取可信快照', async () => {
       : jsonResponse(bootstrap);
   };
   const result = await loadBackendSnapshot({ fetchImpl });
-  assert.deepEqual(calls, [`${API_BASE_URL}/health`, `${API_BASE_URL}/bootstrap`]);
+  assert.deepEqual(calls, [`${getApiBaseUrl()}/health`, `${getApiBaseUrl()}/bootstrap`]);
   assert.equal(result.bootstrap, bootstrap);
 });
 
@@ -85,7 +85,7 @@ test('对话 POST 契约请求并保留后端结构化响应', async () => {
     locale: 'zh-CN',
     timezone: 'Asia/Shanghai'
   });
-  assert.equal(posted.url, `${API_BASE_URL}/conversations/messages`);
+  assert.equal(posted.url, `${getApiBaseUrl()}/conversations/messages`);
   assert.equal(posted.init.method, 'POST');
   assert.equal(posted.body.locale, 'zh-CN');
   assert.equal(posted.body.timezone, 'Asia/Shanghai');

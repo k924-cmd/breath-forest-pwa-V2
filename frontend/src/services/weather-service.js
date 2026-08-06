@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './conversation-service.js?v=20260806-8';
+import { getApiBaseUrl } from './conversation-service.js?v=20260806-9';
 
 const REQUEST_TIMEOUT_MS = 5000;
 
@@ -10,7 +10,7 @@ export async function fetchWeather(city, fetchImpl = globalThis.fetch) {
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     const query = typeof city === 'string' && city.trim() ? encodeURIComponent(city.trim()) : encodeURIComponent('杭州');
-    const response = await fetchImpl(`${API_BASE_URL}/weather?city=${query}`, {
+    const response = await fetchImpl(`${getApiBaseUrl()}/weather?city=${query}`, {
       signal: controller.signal,
       headers: { Accept: 'application/json' }
     });

@@ -4,6 +4,7 @@ import { createLocalAssistant } from "../index.js";
 export const DEFAULT_HTTP_HOST = "127.0.0.1";
 export const DEFAULT_HTTP_PORT = 8787;
 export const DEFAULT_ALLOWED_ORIGINS = Object.freeze(["http://localhost:4173", "http://127.0.0.1:4173", "http://localhost:4174", "http://127.0.0.1:4174"]);
+export const DEFAULT_ALLOW_ORIGINS_WILDCARD = false;
 export const DEFAULT_MAX_BODY_BYTES = 64 * 1024;
 export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 
@@ -22,6 +23,7 @@ export function createHttpAssistantServer(options = {}) {
   const host = options.host ?? DEFAULT_HTTP_HOST;
   const port = options.port ?? DEFAULT_HTTP_PORT;
   const allowedOrigins = normalizeOrigins(options.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS);
+  const allowOriginWildcard = options.allowOriginWildcard ?? DEFAULT_ALLOW_ORIGINS_WILDCARD;
   const actorId = options.actorId ?? "local-http-actor";
   const scopeId = options.scopeId ?? "local-http-scope";
   const maxBodyBytes = options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
@@ -32,7 +34,8 @@ export function createHttpAssistantServer(options = {}) {
   const server = createServer(async (request, response) => {
     const requestId = `http-${String(++requestSequence).padStart(6, "0")}`;
     const origin = request.headers.origin;
-    const corsHeaders = origin && allowedOrigins.has(origin)
+    const originAllowed = !origin || allowedOrigins.has(origin) || (allowOriginWildcard && isHttpsOrigin(origin));
+    const corsHeaders = origin && originAllowed
       ? { "Access-Control-Allow-Origin": origin, Vary: "Origin" }
       : {};
     let timedOut = false;
@@ -43,7 +46,7 @@ export function createHttpAssistantServer(options = {}) {
     deadline.unref?.();
 
     try {
-      if (origin && !allowedOrigins.has(origin)) throw new HttpTransportError(403, "POLICY_REJECTED", "请求来源不在允许列表中。");
+      if (origin && !originAllowed) throw new HttpTransportError(403, "POLICY_REJECTED", "请求来源不在允许列表中。");
       if (request.method === "OPTIONS") {
         validatePreflight(request);
         response.writeHead(204, {
@@ -141,6 +144,14 @@ export function createHttpAssistantServer(options = {}) {
 function normalizeOrigins(value) {
   const entries = typeof value === "string" ? value.split(",") : value;
   return new Set([...entries].map((origin) => origin.trim()).filter(Boolean));
+}
+
+function isHttpsOrigin(origin) {
+  try {
+    return new URL(origin).protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function formatHost(host) {

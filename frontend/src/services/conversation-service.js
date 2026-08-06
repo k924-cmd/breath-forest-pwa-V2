@@ -1,6 +1,9 @@
-import { getMockReply } from '../mocks/conversation.js?v=20260806-8';
+import { getMockReply } from '../mocks/conversation.js?v=20260806-9';
 
-export const API_BASE_URL = 'http://127.0.0.1:8787/v1';
+export const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8787/v1';
+export function getApiBaseUrl() {
+  return (globalThis.window && window.__API_BASE__) || DEFAULT_API_BASE_URL;
+}
 export const CONTRACT_VERSION = '1.0.0';
 const CONVERSATION_STORAGE_KEY = 'breathForestConversationIdV1';
 const REQUEST_TIMEOUT_MS = 5000;
@@ -71,7 +74,7 @@ async function fetchJson(path, init = {}, fetchImpl = globalThis.fetch) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetchImpl(`${API_BASE_URL}${path}`, {
+    const response = await fetchImpl(`${getApiBaseUrl()}${path}`, {
       ...init,
       signal: controller.signal,
       headers: {

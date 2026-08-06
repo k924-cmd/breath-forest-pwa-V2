@@ -8,6 +8,7 @@ const host = process.env.HOST || DEFAULT_HTTP_HOST;
 const configuredPort = Number(process.env.PORT ?? DEFAULT_HTTP_PORT);
 const port = Number.isInteger(configuredPort) && configuredPort >= 0 && configuredPort <= 65_535 ? configuredPort : DEFAULT_HTTP_PORT;
 const allowedOrigins = process.env.ALLOWED_ORIGINS || DEFAULT_ALLOWED_ORIGINS;
+const allowOriginWildcard = ["1", "true", "yes", "on"].includes(String(process.env.ALLOW_ORIGINS_WILDCARD ?? "").toLowerCase());
 
 function resolveModel() {
   const enabled = ["1", "true", "yes", "on"].includes(String(process.env.DEEPSEEK_ENABLED ?? "").toLowerCase());
@@ -24,7 +25,7 @@ function resolveRealtime() {
 const model = resolveModel();
 const realtime = resolveRealtime();
 const assistant = createLocalAssistant({ ...(model ? { model } : {}), ...(realtime ? { realtime } : {}) });
-const service = createHttpAssistantServer({ assistant, host, port, allowedOrigins });
+const service = createHttpAssistantServer({ assistant, host, port, allowedOrigins, allowOriginWildcard });
 const address = await service.start();
 
 console.log(`呼吸森林本地 HTTP 服务监听 ${address.url}${model ? `；真实模型适配器已启用（${model.model}，密钥不显示）` : ""}${realtime ? `；实时搜索适配器已启用（${realtime.referenceId}，密钥不显示）` : ""}`);

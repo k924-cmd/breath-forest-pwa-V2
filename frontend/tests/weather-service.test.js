@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { API_BASE_URL } from '../src/services/conversation-service.js';
+import { getApiBaseUrl } from '../src/services/conversation-service.js';
 import { fetchWeather, FALLBACK_WEATHER } from '../src/services/weather-service.js';
 
 function jsonResponse(payload, status = 200) {
@@ -18,7 +18,7 @@ test('fetchWeather 请求 /v1/weather 并携带城市参数', async () => {
     capturedUrl = url;
     return jsonResponse(payload);
   });
-  assert.equal(capturedUrl, `${API_BASE_URL}/weather?city=${encodeURIComponent('杭州')}`);
+  assert.equal(capturedUrl, `${getApiBaseUrl()}/weather?city=${encodeURIComponent('杭州')}`);
   assert.equal(result.available, true);
   assert.equal(result.temp, '32');
   assert.equal(result.condition, '雨');

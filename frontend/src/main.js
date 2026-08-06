@@ -1,24 +1,24 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260806-8';
-import { icon } from './components/icons.js?v=20260806-8';
-import { homePage } from './pages/home.js?v=20260806-8';
-import { devicesPage } from './pages/devices.js?v=20260806-8';
-import { chatPage } from './pages/chat.js?v=20260806-8';
-import { profilePage } from './pages/profile.js?v=20260806-8';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260806-8';
-import { loginPage } from './components/login.js?v=20260806-8';
-import { login, isLoggedIn } from './auth/auth.js?v=20260806-8';
-import { loadBackendSnapshot, sendConversationMessage } from './services/conversation-service.js?v=20260806-8';
-import { fetchWeather } from './services/weather-service.js?v=20260806-8';
-import { toggleMockDevice } from './services/device-service.js?v=20260806-8';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260806-8';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260806-8';
-import { escapeHtml } from './utils/html.js?v=20260806-8';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260806-8';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260806-9';
+import { icon } from './components/icons.js?v=20260806-9';
+import { homePage } from './pages/home.js?v=20260806-9';
+import { devicesPage } from './pages/devices.js?v=20260806-9';
+import { chatPage } from './pages/chat.js?v=20260806-9';
+import { profilePage } from './pages/profile.js?v=20260806-9';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260806-9';
+import { loginPage } from './components/login.js?v=20260806-9';
+import { login, isLoggedIn } from './auth/auth.js?v=20260806-9';
+import { loadBackendSnapshot, sendConversationMessage } from './services/conversation-service.js?v=20260806-9';
+import { fetchWeather } from './services/weather-service.js?v=20260806-9';
+import { toggleMockDevice } from './services/device-service.js?v=20260806-9';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260806-9';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260806-9';
+import { escapeHtml } from './utils/html.js?v=20260806-9';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260806-9';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260806-8';
+} from './presentation.js?v=20260806-9';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
