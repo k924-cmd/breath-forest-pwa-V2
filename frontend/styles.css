@@ -1122,81 +1122,158 @@ h1, h2, p { margin: 0; }
 .log-list span { font-size: 10px; color: var(--muted); }
 .log-list b { font-size: 13px; margin-top: 4px; }
 
-/* 语音转写确认弹窗 */
+/* 语音转写确认弹窗：高级毛玻璃 */
+.voice-confirm-modal .modal-veil {
+  background: rgba(15, 23, 42, .35);
+}
 .voice-confirm-sheet {
   width: min(650px, 100%);
   margin: auto;
-  background: rgba(255, 255, 255, .9);
-  border: 1px solid var(--glass-border);
-  border-bottom-color: var(--glass-border-outer);
-  border-radius: 24px;
-  padding: 19px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), 0 20px 60px rgba(15, 23, 42, .3);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  background: linear-gradient(160deg, rgba(255, 255, 255, .82) 0%, rgba(246, 250, 248, .72) 55%, rgba(224, 240, 255, .78) 100%);
+  border: 1px solid rgba(255, 255, 255, .75);
+  border-bottom-color: rgba(148, 163, 184, .35);
+  border-radius: 28px;
+  padding: 22px 20px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), 0 24px 70px rgba(15, 23, 42, .35), 0 4px 20px rgba(37, 99, 235, .08);
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  overflow: hidden;
+  animation: voiceSheetIn .28s cubic-bezier(.22, 1.2, .36, 1);
 }
-.voice-confirm-sheet header { display: flex; align-items: center; gap: 11px; margin-bottom: 13px; }
+@keyframes voiceSheetIn {
+  from { opacity: 0; transform: translateY(18px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.voice-confirm-sheet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(120% 60% at 20% -10%, rgba(147, 197, 253, .35), transparent 55%),
+              radial-gradient(100% 50% at 90% 110%, rgba(167, 243, 208, .3), transparent 55%);
+}
+.voice-confirm-sheet header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  position: relative;
+}
 .voice-confirm-sheet .voice-confirm-icon {
-  width: 38px; height: 38px;
-  border-radius: 12px;
+  width: 42px; height: 42px;
+  border-radius: 14px;
   display: grid;
   place-items: center;
-  background: rgba(37, 99, 235, .12);
+  background: linear-gradient(140deg, rgba(37, 99, 235, .16), rgba(59, 130, 246, .08));
   color: var(--accent);
   flex: 0 0 auto;
+  border: 1px solid rgba(37, 99, 235, .16);
+  box-shadow: 0 4px 12px -4px rgba(37, 99, 235, .35);
 }
-.voice-confirm-sheet .voice-confirm-icon svg { width: 19px; height: 19px; }
-.voice-confirm-sheet h2 { font-size: 19px; }
+.voice-confirm-sheet .voice-confirm-icon svg { width: 20px; height: 20px; }
+.voice-confirm-sheet h2 { font-size: 19px; letter-spacing: -.2px; }
+.voice-confirm-sheet .eyebrow { color: var(--muted); }
 .voice-confirm-sheet header > button {
   border: 0;
-  width: 31px; height: 31px;
+  width: 32px; height: 32px;
   border-radius: 50%;
   font-size: 22px;
-  background: var(--hover);
+  line-height: 1;
+  background: rgba(255, 255, 255, .6);
   color: var(--muted);
   margin-left: auto;
   flex: 0 0 auto;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, .08);
 }
+.voice-confirm-body { position: relative; }
 .voice-confirm-sheet textarea {
   width: 100%;
   box-sizing: border-box;
   resize: none;
-  border: 1px solid rgba(148, 163, 184, .35);
-  border-radius: 14px;
-  padding: 12px 13px;
-  font-size: 15px;
-  line-height: 1.55;
+  border: 1px solid rgba(148, 163, 184, .3);
+  border-radius: 16px;
+  padding: 14px 15px;
+  font-size: 16px;
+  line-height: 1.6;
   color: var(--ink);
-  background: rgba(255, 255, 255, .7);
+  background: rgba(255, 255, 255, .72);
   outline: none;
   font-family: inherit;
+  box-shadow: inset 0 1px 4px rgba(15, 23, 42, .05);
 }
 .voice-confirm-sheet textarea:focus {
-  border-color: rgba(147, 197, 253, .85);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+  border-color: rgba(147, 197, 253, .9);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .14), inset 0 1px 4px rgba(15, 23, 42, .04);
 }
 .voice-confirm-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 15px;
+  gap: 12px;
+  margin-top: 18px;
+  position: relative;
 }
 .voice-confirm-actions button {
   flex: 1;
   border: 0;
-  border-radius: 14px;
-  padding: 12px 0;
+  border-radius: 16px;
+  padding: 13px 0;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 750;
   font-family: inherit;
+  transition: transform .12s ease, box-shadow .2s ease, opacity .2s ease;
 }
+.voice-confirm-actions button:active { transform: scale(.97); }
+.voice-confirm-actions button:disabled { opacity: .45; }
 .voice-confirm-actions .voice-cancel {
-  background: var(--hover);
+  background: rgba(148, 163, 184, .16);
   color: var(--muted);
+  border: 1px solid rgba(148, 163, 184, .22);
 }
 .voice-confirm-actions .voice-send {
-  background: var(--accent);
+  background: linear-gradient(140deg, #3b82f6, #2563eb);
   color: #fff;
-  box-shadow: 0 6px 14px -6px rgba(37, 99, 235, .55);
+  box-shadow: 0 8px 18px -6px rgba(37, 99, 235, .6);
+}
+/* 识别中 loading：泡泡 + 轮播话术 */
+.voice-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 128px;
+  gap: 18px;
+  padding: 10px 0;
+}
+.voice-loading-orbs { display: flex; gap: 10px; }
+.voice-loading-orbs i {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(140deg, #60a5fa, #3b82f6);
+  animation: voiceOrb 1.1s ease-in-out infinite;
+}
+.voice-loading-orbs i:nth-child(2) { animation-delay: .15s; background: linear-gradient(140deg, #6ee7b7, #34d399); }
+.voice-loading-orbs i:nth-child(3) { animation-delay: .3s; background: linear-gradient(140deg, #fbbf24, #f59e0b); }
+@keyframes voiceOrb {
+  0%, 100% { transform: translateY(0) scale(1); opacity: .7; }
+  50% { transform: translateY(-12px) scale(1.15); opacity: 1; }
+}
+.voice-loading-text {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: .2px;
+  text-align: center;
+}
+.voice-error-mark {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  font-weight: 800;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, .14);
+  border: 1px solid rgba(245, 158, 11, .3);
 }
 
 .profile-sheet {
