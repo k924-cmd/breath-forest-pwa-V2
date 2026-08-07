@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="apple-touch-icon" href="icons/apple-icon.png" />
     <link rel="icon" href="icons/app-192.png" type="image/png" />
-    <link rel="stylesheet" href="styles.css?v=20260807-5" />
+    <link rel="stylesheet" href="styles.css?v=20260807-6" />
     <title>呼吸森林</title>
   </head>
   <body>
@@ -21,7 +21,7 @@
     <script src="vendor/lottie-web.js"></script>
     <script>
       (() => {
-        const APP_VERSION = '20260807-5';
+        const APP_VERSION = '20260807-6';
         const CACHE_PREFIX = 'breath-forest-ui-';
         const RECOVERY_PARAM = 'bf-bootstrap';
         const localHosts = ['localhost', '127.0.0.1', '::1'];
@@ -67,6 +67,31 @@
               return;
             }
             if (recoveryUrl.searchParams.has(RECOVERY_PARAM)) {
+              recoveryUrl.searchParams.delete(RECOVERY_PARAM);
+              history.replaceState(null, '', recoveryUrl.href);
+            }
+          } else {
+            // 手机（非 localhost）：SW 或 HTTP 缓存可能停留在旧版。用 bf-bootstrap
+            // 参数做版本标记：若当前 URL 无标记且页面由旧 SW 控制，或 SW 版本与
+            // 本版不符，则清掉旧缓存并带版本参数重载，确保拿到新 main.js。
+            const recoveryUrl = new URL(location.href);
+            const marker = recoveryUrl.searchParams.get(RECOVERY_PARAM);
+            const wasControlled = Boolean(navigator.serviceWorker?.controller);
+            const cacheIsStale = await (async () => {
+              try {
+                const keys = await caches.keys();
+                return keys.some(key => key.startsWith(CACHE_PREFIX) && !key.includes(APP_VERSION));
+              } catch {
+                return false;
+              }
+            })();
+            if (wasControlled && marker !== APP_VERSION && cacheIsStale) {
+              await clearLocalAppCaches();
+              recoveryUrl.searchParams.set(RECOVERY_PARAM, APP_VERSION);
+              location.replace(recoveryUrl.href);
+              return;
+            }
+            if (marker === APP_VERSION) {
               recoveryUrl.searchParams.delete(RECOVERY_PARAM);
               history.replaceState(null, '', recoveryUrl.href);
             }
