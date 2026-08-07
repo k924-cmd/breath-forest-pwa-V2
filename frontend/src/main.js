@@ -1,29 +1,37 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260806-9';
-import { icon } from './components/icons.js?v=20260806-9';
-import { homePage } from './pages/home.js?v=20260806-9';
-import { devicesPage } from './pages/devices.js?v=20260806-9';
-import { chatPage } from './pages/chat.js?v=20260806-9';
-import { profilePage } from './pages/profile.js?v=20260806-9';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260806-9';
-import { loginPage } from './components/login.js?v=20260806-9';
-import { login, isLoggedIn } from './auth/auth.js?v=20260806-9';
-import { loadBackendSnapshot, sendConversationMessage } from './services/conversation-service.js?v=20260806-9';
-import { fetchWeather } from './services/weather-service.js?v=20260806-9';
-import { toggleMockDevice } from './services/device-service.js?v=20260806-9';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260806-9';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260806-9';
-import { escapeHtml } from './utils/html.js?v=20260806-9';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260806-9';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260806-11';
+import { icon } from './components/icons.js?v=20260806-11';
+import { homePage } from './pages/home.js?v=20260806-11';
+import { devicesPage } from './pages/devices.js?v=20260806-11';
+import { chatPage } from './pages/chat.js?v=20260806-11';
+import { profilePage } from './pages/profile.js?v=20260806-11';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260806-11';
+import { loginPage } from './components/login.js?v=20260806-11';
+import { login, isLoggedIn } from './auth/auth.js?v=20260806-11';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260806-11';
+import { fetchWeather } from './services/weather-service.js?v=20260806-11';
+import { toggleMockDevice } from './services/device-service.js?v=20260806-11';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260806-11';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260806-11';
+import { escapeHtml } from './utils/html.js?v=20260806-11';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260806-11';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260806-9';
+} from './presentation.js?v=20260806-11';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
 let activeDeviceId = null;
 let weather = null;
+let selectionMode = false;
+const selectedIds = new Set();
+let pressTimer = null;
+let longPressTriggered = false;
+let pressStartX = 0;
+let pressStartY = 0;
+const LONG_PRESS_MS = 500;
+const PRESS_MOVE_TOLERANCE = 10;
 
 function tabs() {
   return `<nav class="tabs"><button class="tabs-devices" data-tab="devices">全部设备 <small>›</small></button><div class="tabs-grid">${[
@@ -105,6 +113,7 @@ function renderMessages() {
     container.innerHTML = messages.map(message => structuredMessageHtml(message, state.devices)).join('');
     renderedMessageSignatures.clear();
     for (const message of messages) renderedMessageSignatures.set(message.id, messageSignature(message));
+    container.querySelectorAll('.message-block').forEach(block => applyBlockSelectionState(block, block.dataset.messageId));
     return;
   }
   const children = Array.from(container.children);
@@ -115,6 +124,7 @@ function renderMessages() {
     const element = children[index];
     if (element?.dataset.messageId === message.id && renderedMessageSignatures.get(message.id) === signature) {
       nextSignatures.set(message.id, signature);
+      applyBlockSelectionState(element, message.id);
       continue;
     }
     const fragment = document.createRange().createContextualFragment(messages.slice(index).map(item => structuredMessageHtml(item, state.devices)).join(''));
@@ -135,6 +145,123 @@ function renderMessages() {
   }
   renderedMessageSignatures.clear();
   for (const [id, signature] of nextSignatures) renderedMessageSignatures.set(id, signature);
+  container.querySelectorAll('.message-block').forEach(block => applyBlockSelectionState(block, block.dataset.messageId));
+}
+
+function applyBlockSelectionState(block, messageId) {
+  if (!block || !messageId) return;
+  block.classList.toggle('selectable', selectionMode);
+  block.classList.toggle('selected', selectionMode && selectedIds.has(messageId));
+}
+
+function setSelectionMode(next) {
+  selectionMode = Boolean(next);
+  if (!selectionMode) selectedIds.clear();
+  document.querySelectorAll('.message-block').forEach(block => applyBlockSelectionState(block, block.dataset.messageId));
+  document.querySelectorAll('.messages').forEach(container => container.classList.toggle('selection-mode', selectionMode));
+  document.querySelectorAll('#selection-bar').forEach(bar => { bar.hidden = !selectionMode; });
+  setSelectionUi();
+  if (selectionMode) scrollChat(true);
+}
+
+function setSelectionUi() {
+  const input = document.querySelector('#chat-input');
+  if (input) input.disabled = selectionMode;
+  const submit = document.querySelector('#chat-form button[type="submit"]');
+  if (submit) submit.disabled = selectionMode;
+  const bar = document.querySelector('#selection-bar');
+  if (bar) bar.querySelector('.selection-count').textContent = selectionMode ? `已选 ${selectedIds.size} 条` : '';
+}
+
+function updateSelectionCount() {
+  document.querySelectorAll('.selection-count').forEach(node => { node.textContent = `已选 ${selectedIds.size} 条`; });
+}
+
+function toggleSelection(messageId) {
+  if (!messageId) return;
+  if (selectedIds.has(messageId)) selectedIds.delete(messageId);
+  else selectedIds.add(messageId);
+  const block = document.querySelector(`.message-block[data-message-id="${CSS.escape(messageId)}"]`);
+  if (block) block.classList.toggle('selected', selectedIds.has(messageId));
+  updateSelectionCount();
+}
+
+function clearLongPress() {
+  clearTimeout(pressTimer);
+  pressTimer = null;
+  longPressTriggered = false;
+}
+
+function startLongPressTimer(block) {
+  clearTimeout(pressTimer);
+  longPressTriggered = false;
+  pressTimer = setTimeout(() => {
+    longPressTriggered = true;
+    if (!selectionMode) setSelectionMode(true);
+    const id = block.dataset.messageId;
+    if (id && !selectedIds.has(id)) toggleSelection(id);
+  }, LONG_PRESS_MS);
+}
+
+function handleMessagePointerDown(event) {
+  if (event.button != null && event.button !== 0) return;
+  const block = event.target.closest('.message-block');
+  if (!block) return;
+  pressStartX = event.clientX;
+  pressStartY = event.clientY;
+  if (selectionMode) {
+    event.preventDefault();
+    toggleSelection(block.dataset.messageId);
+    return;
+  }
+  startLongPressTimer(block);
+}
+
+function handleMessagePointerUp(event) {
+  clearLongPress();
+}
+
+function handleMessagePointerMove(event) {
+  if (pressTimer && Math.abs(event.clientX - pressStartX) + Math.abs(event.clientY - pressStartY) > PRESS_MOVE_TOLERANCE) {
+    clearLongPress();
+  }
+}
+
+function bindMessageSelection() {
+  const container = document.querySelector('.messages');
+  if (!container || container.dataset.selectionBound === 'true') return;
+  container.dataset.selectionBound = 'true';
+  container.addEventListener('pointerdown', handleMessagePointerDown);
+  container.addEventListener('pointerup', handleMessagePointerUp);
+  container.addEventListener('pointercancel', handleMessagePointerUp);
+  container.addEventListener('pointermove', handleMessagePointerMove);
+  container.addEventListener('click', event => {
+    if (selectionMode && event.target.closest('.message-block')) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  });
+}
+
+function bindSelectionBar() {
+  document.querySelector('#selection-bar .selection-cancel')?.addEventListener('click', () => setSelectionMode(false));
+  document.querySelector('#selection-bar .selection-delete')?.addEventListener('click', deleteSelectedMessages);
+}
+
+async function deleteSelectedMessages() {
+  if (!selectedIds.size) return;
+  const ids = Array.from(selectedIds);
+  try {
+    await deleteMessages(ids);
+  } catch {
+    toast('删除失败，请重试');
+    return;
+  }
+  state.messages = state.messages.filter(message => !selectedIds.has(message.id));
+  selectedIds.clear();
+  renderMessages();
+  setSelectionMode(false);
+  saveState();
 }
 
 function render() {
@@ -149,7 +276,7 @@ function render() {
     bind();
     return;
   }
-  root.innerHTML = `<main class="app ${state.tab === 'home' ? 'home-mode' : ''} ${state.tab === 'chat' ? 'chat-mode' : ''}">${homePage(state, environment, state.realtime, weather)}${devicesPage(state)}${chatPage(state)}${profilePage(state)}</main>${tabs()}<div id="toast" class="toast"></div><div id="modal-root"></div><div id="effect-root"></div>`;
+  root.innerHTML = `<main class="app ${state.tab === 'home' ? 'home-mode' : ''} ${state.tab === 'chat' ? 'chat-mode' : ''}">${homePage(state, environment, state.realtime, weather)}${devicesPage(state)}${chatPage(state)}${profilePage(state)}</main>${tabs()}<div id="toast" class="toast"></div><div id="modal-root"></div><div id="effect-root"></div><div id="selection-bar" class="selection-bar glass" hidden><span class="selection-count">已选 0 条</span><button class="selection-delete">删除</button><button class="selection-cancel">取消</button></div>`;
   renderMessages();
   bind();
   initHomeLottie();
@@ -291,6 +418,7 @@ function resolveContinuation(continuation, response, submittedText) {
 }
 
 function setStreamingUi(isStreaming) {
+  if (selectionMode) return;
   const input = document.querySelector('#chat-input');
   if (input) input.disabled = isStreaming;
   const submit = document.querySelector('#chat-form button[type="submit"]');
@@ -298,8 +426,9 @@ function setStreamingUi(isStreaming) {
 }
 
 async function sendMessage(text, continuation) {
-  if (state.isStreaming) return;
-  addMessage('user', text, { continuation });
+  if (state.isStreaming || selectionMode) return;
+  const clientMessageId = crypto.randomUUID?.() || `client-message-${Date.now()}-${Math.random()}`;
+  addMessage('user', text, { continuation, id: clientMessageId });
   const pending = addMessage('assistant', 'Luna 正在整理回复', { responseType: 'chat' });
   pending.status = 'pending';
   state.isStreaming = true;
@@ -308,7 +437,7 @@ async function sendMessage(text, continuation) {
   bind();
   scrollChat(true);
   try {
-    const response = await sendConversationMessage(text, { continuation });
+    const response = await sendConversationMessage(text, { continuation, city: state.profile?.city || '', clientMessageId });
     if (response.transportMode === 'ui_mock') {
       await useUiMockSnapshot();
     } else if (state.connection.status !== 'connected') {
@@ -398,6 +527,7 @@ function bind() {
     button.onclick = () => {
       const next = button.dataset.tab;
       if (next === state.tab) return;
+      if (selectionMode) setSelectionMode(false);
       state.tab = next;
       render();
       if (next === 'home') refreshWeather();
@@ -487,6 +617,8 @@ function bind() {
   document.querySelectorAll('[data-toast]').forEach(button => {
     button.onclick = () => toast(button.dataset.toast);
   });
+  bindMessageSelection();
+  bindSelectionBar();
 
   // 对话气泡：长按放大 + 波动，达到阈值松手后跳转 AI 对话
   document.querySelectorAll('.home-note').forEach(note => {

@@ -12,7 +12,7 @@ import {
   zonedTodayAt,
 } from "../core/utils.js";
 import { actionTarget } from "../devices/registry.js";
-import { localRoute, validateSemanticCandidate } from "./router.js";
+import { extractCity, localRoute, validateSemanticCandidate } from "./router.js";
 import { lookupKnowledge } from "./knowledge-base.js";
 import { detectHealthTopic, guardModelReply } from "./reply-safety.js";
 import { decideSingleDevice, validatePlannedActions } from "../policies/policy.js";
@@ -24,6 +24,7 @@ const MEDICAL_DISCLAIMER = " 以上仅为一般性信息，不构成医疗诊断
 const CHAT_FALLBACK_TEMPLATE = "你好，我是 Luna。我可以陪你聊聊，也可以帮助查询空气、设备或管理 V1 任务。设备状态和执行结果只会依据可信状态或回执说明。";
 const CHAT_DEGRADED_TEMPLATE = "聊天模型暂时不可用；设备和环境的明确查询、本地确定性控制仍可继续使用。";
 const KNOWLEDGE_URGENT_TEMPLATE = "请先离开可能的风险环境，到空气安全处，并尽快联系当地紧急服务或专业医疗人员。这里不能替代紧急救助或医疗诊断。";
+const COMMON_CITIES = ["北京", "上海", "广州", "深圳", "杭州", "成都", "南京", "武汉", "西安", "重庆"];
 
 function composeReplyText(content, healthTopic) {
   return `${content}${AI_DISCLAIMER}${healthTopic ? MEDICAL_DISCLAIMER : ""}`;
@@ -55,11 +56,13 @@ export class AssistantService {
         conversationId,
         properties: { responseType: result.responseType, outcome: result.error?.code ?? "completed", durationMs: Math.max(0, this.clock.now().getTime() - started) },
       });
+      this.#persistTurn(conversationId, result);
       return clone(result);
     } catch (error) {
       const safe = safePublicError(error, requestId);
       const result = this.#errorResponse(conversationId, requestId, safe, safe.code === "POLICY_REJECTED" ? "rejection" : "error");
       this.#event("public_error_returned", { requestId, conversationId, properties: { errorCode: safe.code, surface: "assistant", retryable: safe.retryable } });
+      this.#persistTurn(conversationId, result);
       return result;
     }
   }
@@ -161,7 +164,7 @@ export class AssistantService {
     }
     let snapshot;
     try {
-      snapshot = await this.realtime.search(`${cityName} 今天天气`);
+      snapshot = await this.realtime.search(`${cityName} 今天天气 请用中文回答`);
     } catch {
       snapshot = null;
     }
@@ -193,7 +196,7 @@ export class AssistantService {
 
   #validateRequest(request, transport, requestId) {
     if (!request || typeof request !== "object" || Array.isArray(request)) throw publicError("INVALID_REQUEST", "请求格式无效。", { requestId });
-    const allowedFields = new Set(["contractVersion", "conversationId", "clientMessageId", "idempotencyKey", "message", "locale", "timezone", "continuation"]);
+    const allowedFields = new Set(["contractVersion", "conversationId", "clientMessageId", "idempotencyKey", "message", "locale", "timezone", "continuation", "city"]);
     if (Object.keys(request).some((field) => !allowedFields.has(field))) throw publicError("INVALID_REQUEST", "请求包含未定义字段。", { requestId });
     if (request.contractVersion !== CONTRACT_VERSION) throw publicError("CONTRACT_VERSION_UNSUPPORTED", "不支持的契约版本。", { requestId });
     for (const field of ["conversationId", "clientMessageId", "idempotencyKey"]) {
@@ -214,7 +217,7 @@ export class AssistantService {
     if (typeof transport.actorId !== "string" || !transport.actorId || typeof transport.scopeId !== "string" || !transport.scopeId) {
       throw publicError("INVALID_REQUEST", "缺少可信身份或作用域。", { requestId });
     }
-    return { ...request, message };
+    return { ...request, message, city: typeof request.city === "string" ? request.city.trim() : "" };
   }
 
   #findIdempotency(request, scopeId, requestId) {
@@ -233,7 +236,7 @@ export class AssistantService {
   }
 
   #idempotentPayload(request) {
-    return { contractVersion: request.contractVersion, conversationId: request.conversationId, clientMessageId: request.clientMessageId, message: request.message, locale: request.locale, timezone: request.timezone, continuation: request.continuation ?? null };
+    return { contractVersion: request.contractVersion, conversationId: request.conversationId, clientMessageId: request.clientMessageId, message: request.message, locale: request.locale, timezone: request.timezone, continuation: request.continuation ?? null, city: request.city ?? null };
   }
 
   async #process(request, transport, requestId) {
@@ -241,7 +244,7 @@ export class AssistantService {
     if (state.actorId && (state.actorId !== transport.actorId || state.scopeId !== transport.scopeId)) throw publicError("INVALID_REQUEST", "会话不属于当前可信身份或作用域。", { requestId });
     state.actorId ??= transport.actorId;
     state.scopeId ??= transport.scopeId;
-    this.#rememberMessage(state, "user", request.message);
+    this.#rememberMessage(state, "user", request.message, request.clientMessageId);
     let route = localRoute(request.message);
     let modelConsulted = false;
 
@@ -299,7 +302,7 @@ export class AssistantService {
       case "chat": return this.#chat(request, requestId);
       case "knowledge_query": return this.#knowledge(request, requestId, route);
       case "weather_query": return this.#rejection(request, requestId, "ENVIRONMENT_UNAVAILABLE", "V1 暂无可信的外部实时天气或室外数据源，无法提供室外数值或天气预报；室内环境与设备查询仍可使用可信快照。", []);
-      case "real_time_query": return this.#realTimeQuery(request, requestId);
+      case "real_time_query": return this.#realTimeQuery(state, request, requestId);
       case "environment_query": return this.#environment(request, requestId, route);
       case "device_query": return this.#deviceQuery(state, request, requestId, route);
       case "device_control": return this.#deviceControl(state, request, transport, requestId, route);
@@ -373,12 +376,16 @@ export class AssistantService {
       && !Number.isNaN(new Date(value.observedAt).getTime()) && ["mock", "replay", "sensor"].includes(value.source) && ["fresh", "stale"].includes(value.freshness);
   }
 
-  async #realTimeQuery(request, requestId) {
+  async #realTimeQuery(state, request, requestId) {
     if (!this.realtime?.available) {
       return this.#rejection(request, requestId, "ENVIRONMENT_UNAVAILABLE", "实时天气或室外数据源尚未接入，无法提供室外数值或天气预报；室内环境与设备查询仍可使用可信快照。", []);
     }
+    const city = extractCity(request.message) ?? (request.city?.trim() || null);
+    if (!city) {
+      return this.#clarification(state, request, requestId, "city", "请告诉我要查询哪个城市的天气？", COMMON_CITIES);
+    }
     let snapshot;
-    try { snapshot = await this.realtime.search(request.message); } catch { snapshot = null; }
+    try { snapshot = await this.realtime.search(`${city} 今天天气 请用中文回答`); } catch { snapshot = null; }
     if (!snapshot || typeof snapshot.answer !== "string") {
       this.#event("dependency_degraded", { requestId, conversationId: request.conversationId, properties: { dependency: "realtime", errorCode: "REALTIME_UNAVAILABLE" } });
       return this.#rejection(request, requestId, "ENVIRONMENT_UNAVAILABLE", "实时搜索服务暂时不可用，无法提供实时天气或室外信息，请稍后再试。", []);
@@ -785,9 +792,31 @@ export class AssistantService {
     };
   }
 
-  #rememberMessage(state, role, content) {
-    state.messages.push({ role, content });
+  #rememberMessage(state, role, content, messageId = null) {
+    const id = typeof messageId === "string" && messageId ? messageId : this.ids.next("message");
+    state.messages.push({ id, role, content, createdAt: this.clock.iso() });
     if (state.messages.length > 12) state.messages.splice(0, state.messages.length - 12);
+  }
+
+  #persistTurn(conversationId, result) {
+    if (!conversationId || typeof conversationId !== "string" || !conversationId) return;
+    const state = this.repository.getConversation(conversationId);
+    const userMessages = Array.isArray(state?.messages) ? state.messages.filter((message) => message?.role === "user").map((message) => ({ ...message })) : [];
+    const userMessage = userMessages[userMessages.length - 1];
+    if (!userMessage || !result?.message) return;
+    const assistantMessage = {
+      ...result.message,
+      responseType: result.responseType ?? null,
+      ...(Array.isArray(result.sources) ? { sources: result.sources } : {}),
+      ...Object.fromEntries(Object.entries(result).filter(([key]) => ["error", "realtime", "confirmation", "clarification", "task", "receipt", "receiptId", "requestId", "planId"].includes(key))),
+    };
+    if (typeof this.repository.persistMessages === "function") {
+      try {
+        this.repository.persistMessages(conversationId, [userMessage, assistantMessage]);
+      } catch {
+        // Persistence is best-effort and cannot change the main result.
+      }
+    }
   }
 
   #event(eventName, partial) {

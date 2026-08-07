@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { createHttpAssistantServer, DEFAULT_ALLOWED_ORIGINS, DEFAULT_HTTP_HOST, DEFAULT_HTTP_PORT } from "./api/http-server.js";
-import { createLocalAssistant, DeepSeekModelAdapter, TavilySearchAdapter } from "./index.js";
+import { createLocalAssistant, DeepSeekModelAdapter, SqliteStateRepository, TavilySearchAdapter } from "./index.js";
 import { loadDotEnvIfPresent } from "./config/env.js";
 
 loadDotEnvIfPresent(fileURLToPath(new URL("../.env", import.meta.url)));
@@ -22,13 +22,21 @@ function resolveRealtime() {
   return new TavilySearchAdapter();
 }
 
+function resolveRepository() {
+  const enabled = ["1", "true", "yes", "on"].includes(String(process.env.SQLITE_ENABLED ?? "1").toLowerCase());
+  if (!enabled) return null;
+  const path = process.env.SQLITE_DB_PATH || fileURLToPath(new URL("../data/forest.db", import.meta.url));
+  return new SqliteStateRepository({ path });
+}
+
 const model = resolveModel();
 const realtime = resolveRealtime();
-const assistant = createLocalAssistant({ ...(model ? { model } : {}), ...(realtime ? { realtime } : {}) });
+const repository = resolveRepository();
+const assistant = createLocalAssistant({ ...(model ? { model } : {}), ...(realtime ? { realtime } : {}), ...(repository ? { repository } : {}) });
 const service = createHttpAssistantServer({ assistant, host, port, allowedOrigins, allowOriginWildcard });
 const address = await service.start();
 
-console.log(`呼吸森林本地 HTTP 服务监听 ${address.url}${model ? `；真实模型适配器已启用（${model.model}，密钥不显示）` : ""}${realtime ? `；实时搜索适配器已启用（${realtime.referenceId}，密钥不显示）` : ""}`);
+console.log(`呼吸森林本地 HTTP 服务监听 ${address.url}${model ? `；真实模型适配器已启用（${model.model}，密钥不显示）` : ""}${realtime ? `；实时搜索适配器已启用（${realtime.referenceId}，密钥不显示）` : ""}${repository ? `；SQLite 持久化已启用（${repository.file}）` : ""}`);
 
 let closing = false;
 async function shutdown() {

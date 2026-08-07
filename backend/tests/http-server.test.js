@@ -11,6 +11,7 @@ function messageRequest(message, sequence, overrides = {}) {
     message,
     locale: "zh-CN",
     timezone: "Asia/Shanghai",
+    ...overrides,
   };
 }
 
@@ -76,6 +77,23 @@ test("本地 HTTP 适配器契约", async (context) => {
     assert.equal(state.scopeId, "configured-local-scope");
   });
 
+  await context.test("POST accepts city field and rejects non-string city", async () => {
+    const withCity = await jsonResponse(`${address.url}/v1/conversations/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(messageRequest("现在空气怎么样", 9, { city: "杭州" })),
+    });
+    assert.equal(withCity.response.status, 200);
+
+    const badCity = await jsonResponse(`${address.url}/v1/conversations/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(messageRequest("现在空气怎么样", 10, { city: 42 })),
+    });
+    assert.equal(badCity.response.status, 400);
+    assert.equal(badCity.body.code, "INVALID_REQUEST");
+  });
+
   await context.test("structured domain error still returns HTTP 200", async () => {
     const { response, body } = await jsonResponse(`${address.url}/v1/conversations/messages`, {
       method: "POST",
@@ -107,7 +125,7 @@ test("本地 HTTP 适配器契约", async (context) => {
     });
     assert.equal(preflight.status, 204);
     assert.equal(preflight.headers.get("access-control-allow-origin"), "http://127.0.0.1:4173");
-    assert.equal(preflight.headers.get("access-control-allow-methods"), "GET, POST, OPTIONS");
+    assert.equal(preflight.headers.get("access-control-allow-methods"), "GET, POST, OPTIONS, DELETE");
     assert.equal(preflight.headers.get("access-control-allow-headers"), "Content-Type");
 
     const identityPreflight = await jsonResponse(`${address.url}/v1/conversations/messages`, {

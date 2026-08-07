@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createSendMessageRequest,
+  deleteMessages,
   getApiBaseUrl,
   getConversationId,
   loadBackendSnapshot,
@@ -34,6 +35,7 @@ test('conversationId 在同一存储中保持稳定，请求携带契约上下�
     storage,
     locale: 'zh-CN',
     timezone: 'Asia/Shanghai',
+    city: '杭州',
     continuation: { type: 'confirmation', id: 'confirmation-1' }
   });
   assert.equal(request.conversationId, first);
@@ -42,7 +44,11 @@ test('conversationId 在同一存储中保持稳定，请求携带契约上下�
   assert.equal(request.message, '确认');
   assert.equal(request.locale, 'zh-CN');
   assert.equal(request.timezone, 'Asia/Shanghai');
+  assert.equal(request.city, '杭州');
   assert.deepEqual(request.continuation, { type: 'confirmation', id: 'confirmation-1' });
+
+  const noCity = createSendMessageRequest('你好', { storage });
+  assert.equal('city' in noCity, false);
 });
 
 test('启动严格按 health 再 bootstrap 获取可信快照', async () => {
@@ -83,14 +89,37 @@ test('对话 POST 契约请求并保留后端结构化响应', async () => {
     fetchImpl,
     storage: memoryStorage(),
     locale: 'zh-CN',
-    timezone: 'Asia/Shanghai'
+    timezone: 'Asia/Shanghai',
+    city: '杭州'
   });
   assert.equal(posted.url, `${getApiBaseUrl()}/conversations/messages`);
   assert.equal(posted.init.method, 'POST');
   assert.equal(posted.body.locale, 'zh-CN');
   assert.equal(posted.body.timezone, 'Asia/Shanghai');
+  assert.equal(posted.body.city, '杭州');
   assert.equal(response.responseType, 'confirmation');
   assert.equal(response.transportMode, 'backend');
+});
+
+test('消息批量删除 DELETE 契约请求返回删除数量', async () => {
+  let posted;
+  const storage = memoryStorage();
+  const conversationId = getConversationId(storage);
+  const fetchImpl = async (url, init) => {
+    posted = { url, init, body: JSON.parse(init.body) };
+    return jsonResponse({ deleted: 2, conversationId });
+  };
+  const result = await deleteMessages(['msg-1', 'msg-2'], { fetchImpl, storage });
+  assert.equal(posted.url, `${getApiBaseUrl()}/conversations/${conversationId}/messages`);
+  assert.equal(posted.init.method, 'DELETE');
+  assert.deepEqual(posted.body.messageIds, ['msg-1', 'msg-2']);
+  assert.equal(result.deleted, 2);
+  assert.equal(result.conversationId, conversationId);
+});
+
+test('消息批量删除失败时抛出错误', async () => {
+  const fetchImpl = async () => jsonResponse({ code: 'DELETE_FAILED' }, 500);
+  await assert.rejects(() => deleteMessages(['msg-1'], { fetchImpl, storage: memoryStorage() }));
 });
 
 test('API 不可用时明确降级为本地 UI Mock', async () => {

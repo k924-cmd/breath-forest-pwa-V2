@@ -4,6 +4,7 @@
 # Local development artifacts
 *.log
 .tmp/
+backend/data/
 
 # Claude Code worktrees (managed by main agent)
 .claude/worktrees/

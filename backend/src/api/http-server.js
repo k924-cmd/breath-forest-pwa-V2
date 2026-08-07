@@ -51,7 +51,7 @@ export function createHttpAssistantServer(options = {}) {
         validatePreflight(request);
         response.writeHead(204, {
           ...corsHeaders,
-          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS, DELETE",
           "Access-Control-Allow-Headers": "Content-Type",
           "Access-Control-Max-Age": "600",
         });
@@ -85,6 +85,26 @@ export function createHttpAssistantServer(options = {}) {
         validateMessageEnvelope(body);
         const result = await assistant.sendMessage(body, { actorId, scopeId });
         if (!timedOut && !response.writableEnded) writeJson(response, 200, result, corsHeaders);
+        return;
+      }
+      const messagesMatch = /^\/v1\/conversations\/([^/]+)\/messages$/.exec(pathname);
+      if (messagesMatch) {
+        const conversationId = decodeURIComponent(messagesMatch[1]);
+        if (!conversationId) throw new HttpTransportError(400, "INVALID_REQUEST", "会话标识无效。");
+        if (request.method === "GET") {
+          const messages = await assistant.repository.listMessages(conversationId);
+          if (!timedOut && !response.writableEnded) writeJson(response, 200, { contractVersion: "1.0.0", conversationId, messages, count: messages.length }, corsHeaders);
+          return;
+        }
+        if (request.method === "DELETE") {
+          requireJsonContentType(request);
+          const body = await readJsonBody(request, maxBodyBytes);
+          validateDeleteMessagesBody(body);
+          const deleted = await assistant.repository.deleteMessages(conversationId, body.messageIds);
+          if (!timedOut && !response.writableEnded) writeJson(response, 200, { deleted, conversationId }, corsHeaders);
+          return;
+        }
+        requireMethod(request, "GET");
         return;
       }
       throw new HttpTransportError(404, "INVALID_REQUEST", "未找到该 HTTP 路由。");
@@ -179,7 +199,7 @@ function requireJsonContentType(request) {
 
 function validatePreflight(request) {
   const requestedMethod = request.headers["access-control-request-method"];
-  if (requestedMethod && !["GET", "POST"].includes(requestedMethod.toUpperCase())) throw new HttpTransportError(400, "INVALID_REQUEST", "预检请求的方法不受支持。");
+  if (requestedMethod && !["GET", "POST", "DELETE"].includes(requestedMethod.toUpperCase())) throw new HttpTransportError(400, "INVALID_REQUEST", "预检请求的方法不受支持。");
   const requestedHeaders = String(request.headers["access-control-request-headers"] ?? "")
     .split(",")
     .map((header) => header.trim().toLowerCase())
@@ -212,8 +232,9 @@ async function readJsonBody(request, maxBodyBytes) {
 
 function validateMessageEnvelope(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new HttpTransportError(400, "INVALID_REQUEST", "消息请求格式无效。");
-  const allowed = new Set(["contractVersion", "conversationId", "clientMessageId", "idempotencyKey", "message", "locale", "timezone", "continuation"]);
+  const allowed = new Set(["contractVersion", "conversationId", "clientMessageId", "idempotencyKey", "message", "locale", "timezone", "continuation", "city"]);
   if (Object.keys(value).some((key) => !allowed.has(key))) throw new HttpTransportError(400, "INVALID_REQUEST", "消息请求包含未定义字段。");
+  if (value.city !== undefined && typeof value.city !== "string") throw new HttpTransportError(400, "INVALID_REQUEST", "city 字段格式无效。");
   if (value.contractVersion !== "1.0.0") throw new HttpTransportError(400, "CONTRACT_VERSION_UNSUPPORTED", "不支持的契约版本。");
   for (const field of ["conversationId", "clientMessageId", "idempotencyKey", "message", "locale", "timezone"]) {
     if (typeof value[field] !== "string") throw new HttpTransportError(400, "INVALID_REQUEST", "消息请求缺少必需字符串字段。");
@@ -224,6 +245,14 @@ function validateMessageEnvelope(value) {
       || Object.keys(value.continuation).some((key) => !["type", "id"].includes(key))) {
       throw new HttpTransportError(400, "INVALID_REQUEST", "continuation 格式无效。");
     }
+  }
+}
+
+function validateDeleteMessagesBody(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new HttpTransportError(400, "INVALID_REQUEST", "删除请求格式无效。");
+  if (Object.keys(value).some((key) => key !== "messageIds")) throw new HttpTransportError(400, "INVALID_REQUEST", "删除请求包含未定义字段。");
+  if (!Array.isArray(value.messageIds) || value.messageIds.some((id) => typeof id !== "string" || !id)) {
+    throw new HttpTransportError(400, "INVALID_REQUEST", "messageIds 必须是字符串数组。");
   }
 }
 

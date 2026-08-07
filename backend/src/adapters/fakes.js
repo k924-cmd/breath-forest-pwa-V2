@@ -29,6 +29,36 @@ export class InMemoryStateRepository {
   }
   getTask(scopeId) { return this.tasks.get(scopeId) ?? null; }
   setTask(scopeId, task) { this.tasks.set(scopeId, task); return task; }
+  // Extended message-persistence interface. InMemory keeps a per-conversation
+  // list so listMessages reflects what the assistant recorded in memory; it
+  // never survives a restart (matching the existing in-memory behaviour).
+  persistMessages(conversationId, messages) {
+    if (!conversationId || !Array.isArray(messages) || !messages.length) return;
+    const state = this.conversations.get(conversationId);
+    const target = state && Array.isArray(state.messages) ? state.messages : [];
+    const existing = new Set(target.map((message) => message.id).filter(Boolean));
+    for (const message of messages) {
+      if (message && message.id && !existing.has(message.id)) target.push(message);
+    }
+    if (state && target.length > 12) target.splice(0, target.length - 12);
+  }
+  listMessages(conversationId) {
+    const state = this.conversations.get(conversationId);
+    return Array.isArray(state?.messages) ? state.messages.map((message) => ({ ...message })) : [];
+  }
+  deleteMessages(conversationId, messageIds) {
+    const state = this.conversations.get(conversationId);
+    if (!state || !Array.isArray(state.messages)) return 0;
+    const ids = new Set(Array.isArray(messageIds) ? messageIds : []);
+    const before = state.messages.length;
+    state.messages = state.messages.filter((message) => !ids.has(message.id));
+    return before - state.messages.length;
+  }
+  listConversations() {
+    return [...this.conversations.entries()]
+      .map(([id, state]) => ({ id, actorId: state?.actorId ?? null, scopeId: state?.scopeId ?? null, title: null, createdAt: null, updatedAt: null }))
+      .filter((conversation) => conversation.actorId !== null || conversation.scopeId !== null);
+  }
 }
 
 export class FakeModelAdapter {

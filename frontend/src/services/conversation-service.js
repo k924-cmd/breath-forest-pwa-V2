@@ -1,4 +1,4 @@
-import { getMockReply } from '../mocks/conversation.js?v=20260806-9';
+import { getMockReply } from '../mocks/conversation.js?v=20260806-11';
 
 export const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8787/v1';
 export function getApiBaseUrl() {
@@ -66,6 +66,8 @@ export function createSendMessageRequest(message, options = {}) {
       id: options.continuation.id
     };
   }
+  const city = typeof options.city === 'string' ? options.city.trim() : '';
+  if (city) request.city = city;
   return request;
 }
 
@@ -184,4 +186,15 @@ export async function sendConversationMessage(message, options = {}) {
   } catch {
     return createUiMockFallback(message, request);
   }
+}
+
+export async function deleteMessages(messageIds, options = {}) {
+  const ids = Array.isArray(messageIds) ? messageIds : [];
+  const conversationId = options.conversationId || getConversationId(options.storage);
+  const { response, payload } = await fetchJson(`/conversations/${encodeURIComponent(conversationId)}/messages`, {
+    method: 'DELETE',
+    body: JSON.stringify({ messageIds: ids })
+  }, options.fetchImpl);
+  if (!response.ok) throw new Error('DELETE_FAILED');
+  return payload;
 }
