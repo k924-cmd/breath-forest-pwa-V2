@@ -1,4 +1,4 @@
-import { createMockDevices } from '../mocks/devices.js?v=20260807-4';
+import { createMockDevices } from '../mocks/devices.js?v=20260807-5';
 
 export const STORAGE_KEY = 'breathForestUiV2';
 

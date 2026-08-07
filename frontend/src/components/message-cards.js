@@ -1,4 +1,4 @@
-import { escapeHtml } from '../utils/html.js?v=20260807-4';
+import { escapeHtml } from '../utils/html.js?v=20260807-5';
 import {
   formatObservedAt,
   getActionLabel,
@@ -9,7 +9,7 @@ import {
   getTaskName,
   getTaskPresentation,
   splitDisclaimerContent
-} from '../presentation.js?v=20260807-4';
+} from '../presentation.js?v=20260807-5';
 
 function findDevice(deviceId, devices) {
   return (Array.isArray(devices) ? devices : []).find(device => device.id === deviceId);

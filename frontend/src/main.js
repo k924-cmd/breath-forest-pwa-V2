@@ -1,26 +1,26 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260807-4';
-import { icon } from './components/icons.js?v=20260807-4';
-import { homePage } from './pages/home.js?v=20260807-4';
-import { devicesPage } from './pages/devices.js?v=20260807-4';
-import { chatPage } from './pages/chat.js?v=20260807-4';
-import { profilePage } from './pages/profile.js?v=20260807-4';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260807-4';
-import { loginPage } from './components/login.js?v=20260807-4';
-import { login, isLoggedIn } from './auth/auth.js?v=20260807-4';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260807-4';
-import { fetchWeather } from './services/weather-service.js?v=20260807-4';
-import { toggleMockDevice } from './services/device-service.js?v=20260807-4';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260807-4';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260807-4';
-import { escapeHtml } from './utils/html.js?v=20260807-4';
-import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260807-4';
-import { transcribeAudio } from './services/asr-service.js?v=20260807-4';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260807-4';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260807-5';
+import { icon } from './components/icons.js?v=20260807-5';
+import { homePage } from './pages/home.js?v=20260807-5';
+import { devicesPage } from './pages/devices.js?v=20260807-5';
+import { chatPage } from './pages/chat.js?v=20260807-5';
+import { profilePage } from './pages/profile.js?v=20260807-5';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260807-5';
+import { loginPage } from './components/login.js?v=20260807-5';
+import { login, isLoggedIn } from './auth/auth.js?v=20260807-5';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260807-5';
+import { fetchWeather } from './services/weather-service.js?v=20260807-5';
+import { toggleMockDevice } from './services/device-service.js?v=20260807-5';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260807-5';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260807-5';
+import { escapeHtml } from './utils/html.js?v=20260807-5';
+import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260807-5';
+import { transcribeAudio } from './services/asr-service.js?v=20260807-5';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260807-5';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260807-4';
+} from './presentation.js?v=20260807-5';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
@@ -39,7 +39,7 @@ function tabs() {
   const devicesEntry = state.tab === 'home' ? '<button class="tabs-devices" data-tab="devices">全部设备 <small>›</small></button>' : '';
   return `<nav class="tabs">${devicesEntry}<div class="tabs-grid">${[
     ['home', 'home', '首页'], ['devices', 'devices', '设备']
-  ].map(([id, glyph, label]) => `<button class="tab ${state.tab === id ? 'active' : ''}" data-tab="${id}">${icon(glyph)}<span>${label}</span></button>`).join('')}<button class="tab voice-tab" data-action="voice" aria-label="语音输入" title="长按说话"><span class="voice-ripple"></span>${icon('mic')}<span>语音</span></button>${[
+  ].map(([id, glyph, label]) => `<button class="tab ${state.tab === id ? 'active' : ''}" data-tab="${id}">${icon(glyph)}<span>${label}</span></button>`).join('')}<button class="tab voice-tab" data-action="voice" aria-label="语音输入" title="长按说话"><span class="voice-ripple"></span><span class="voice-lottie" id="voice-lottie" role="img" aria-label="语音输入动画"></span></button>${[
     ['chat', 'chat', 'AI 对话'], ['profile', 'user', '我的']
   ].map(([id, glyph, label]) => `<button class="tab ${state.tab === id ? 'active' : ''}" data-tab="${id}">${icon(glyph)}<span>${label}</span></button>`).join('')}</div></nav>`;
 }
@@ -103,6 +103,11 @@ function initIntroLottie() {
 function initHomeLottie() {
   const container = document.querySelector('#lottie-stage');
   if (container) loadLottie(container, 'assets/start-robot.json');
+}
+
+function initVoiceLottie() {
+  const container = document.querySelector('#voice-lottie');
+  if (container) loadLottie(container, 'assets/ai-flow.json');
 }
 
 function renderMessages() {
@@ -280,6 +285,7 @@ function render() {
   renderMessages();
   bind();
   initHomeLottie();
+  initVoiceLottie();
   if (activeDeviceId) openDeviceDetail(activeDeviceId);
   if (state.tab === 'chat') requestAnimationFrame(() => scrollChat(true));
 }

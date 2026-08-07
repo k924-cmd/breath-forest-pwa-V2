@@ -1012,13 +1012,18 @@ h1, h2, p { margin: 0; }
 }
 .tab.active span { font-weight: 750; }
 
-/* 语音快捷入口：长按录音 */
+/* 语音快捷入口：长按录音（图标为气泡 Lottie 动画） */
 .voice-tab {
   min-width: 58px;
+  height: 54px;
+  justify-content: center;
 }
-.voice-tab svg {
-  width: 24px;
-  height: 24px;
+.voice-tab .voice-lottie {
+  width: 34px;
+  height: 34px;
+  pointer-events: none;
+  transition: transform .18s ease;
+  transform-origin: 50% 50%;
 }
 .voice-tab .voice-ripple {
   position: absolute;
@@ -1030,21 +1035,23 @@ h1, h2, p { margin: 0; }
   transition: transform .18s ease, opacity .18s ease;
   pointer-events: none;
 }
-.voice-tab.recording {
-  color: #fff;
-}
 .voice-tab.recording .voice-ripple {
   opacity: 1;
   transform: scale(1);
   animation: voicePulse 1s ease-in-out infinite;
   background: rgba(37, 99, 235, .35);
 }
-.voice-tab.recording svg {
-  filter: drop-shadow(0 3px 6px rgba(37, 99, 235, .4));
+.voice-tab.recording .voice-lottie {
+  transform: scale(1.25);
+  animation: voiceLottiePulse .5s ease-in-out infinite;
 }
 @keyframes voicePulse {
   0%, 100% { transform: scale(1); opacity: .55; }
   50% { transform: scale(1.12); opacity: 1; }
+}
+@keyframes voiceLottiePulse {
+  0%, 100% { transform: scale(1.25); }
+  50% { transform: scale(1.4); }
 }
 
 /* ---- Toast / Modal --------------------------------------------------------- */
