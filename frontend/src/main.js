@@ -1,24 +1,24 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260806-11';
-import { icon } from './components/icons.js?v=20260806-11';
-import { homePage } from './pages/home.js?v=20260806-11';
-import { devicesPage } from './pages/devices.js?v=20260806-11';
-import { chatPage } from './pages/chat.js?v=20260806-11';
-import { profilePage } from './pages/profile.js?v=20260806-11';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260806-11';
-import { loginPage } from './components/login.js?v=20260806-11';
-import { login, isLoggedIn } from './auth/auth.js?v=20260806-11';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260806-11';
-import { fetchWeather } from './services/weather-service.js?v=20260806-11';
-import { toggleMockDevice } from './services/device-service.js?v=20260806-11';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260806-11';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260806-11';
-import { escapeHtml } from './utils/html.js?v=20260806-11';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260806-11';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260807-1';
+import { icon } from './components/icons.js?v=20260807-1';
+import { homePage } from './pages/home.js?v=20260807-1';
+import { devicesPage } from './pages/devices.js?v=20260807-1';
+import { chatPage } from './pages/chat.js?v=20260807-1';
+import { profilePage } from './pages/profile.js?v=20260807-1';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260807-1';
+import { loginPage } from './components/login.js?v=20260807-1';
+import { login, isLoggedIn } from './auth/auth.js?v=20260807-1';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260807-1';
+import { fetchWeather } from './services/weather-service.js?v=20260807-1';
+import { toggleMockDevice } from './services/device-service.js?v=20260807-1';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260807-1';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260807-1';
+import { escapeHtml } from './utils/html.js?v=20260807-1';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260807-1';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260806-11';
+} from './presentation.js?v=20260807-1';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
@@ -34,7 +34,8 @@ const LONG_PRESS_MS = 500;
 const PRESS_MOVE_TOLERANCE = 10;
 
 function tabs() {
-  return `<nav class="tabs"><button class="tabs-devices" data-tab="devices">全部设备 <small>›</small></button><div class="tabs-grid">${[
+  const devicesEntry = state.tab === 'home' ? '<button class="tabs-devices" data-tab="devices">全部设备 <small>›</small></button>' : '';
+  return `<nav class="tabs">${devicesEntry}<div class="tabs-grid">${[
     ['home', 'home', '首页'], ['devices', 'devices', '设备'], ['chat', 'chat', 'AI 对话'], ['profile', 'user', '我的']
   ].map(([id, glyph, label]) => `<button class="tab ${state.tab === id ? 'active' : ''}" data-tab="${id}">${icon(glyph)}<span>${label}</span></button>`).join('')}</div></nav>`;
 }

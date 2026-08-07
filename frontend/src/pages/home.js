@@ -1,6 +1,6 @@
-import { icon } from '../components/icons.js?v=20260806-11';
-import { getConnectionPresentation } from '../presentation.js?v=20260806-11';
-import { escapeHtml } from '../utils/html.js?v=20260806-11';
+import { icon } from '../components/icons.js?v=20260807-1';
+import { getConnectionPresentation } from '../presentation.js?v=20260807-1';
+import { escapeHtml } from '../utils/html.js?v=20260807-1';
 
 function realtimeBadge(realtime) {
   const live = Boolean(realtime?.available);
