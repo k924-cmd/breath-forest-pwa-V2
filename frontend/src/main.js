@@ -1,24 +1,26 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260807-3';
-import { icon } from './components/icons.js?v=20260807-3';
-import { homePage } from './pages/home.js?v=20260807-3';
-import { devicesPage } from './pages/devices.js?v=20260807-3';
-import { chatPage } from './pages/chat.js?v=20260807-3';
-import { profilePage } from './pages/profile.js?v=20260807-3';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260807-3';
-import { loginPage } from './components/login.js?v=20260807-3';
-import { login, isLoggedIn } from './auth/auth.js?v=20260807-3';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260807-3';
-import { fetchWeather } from './services/weather-service.js?v=20260807-3';
-import { toggleMockDevice } from './services/device-service.js?v=20260807-3';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260807-3';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260807-3';
-import { escapeHtml } from './utils/html.js?v=20260807-3';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260807-3';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260807-4';
+import { icon } from './components/icons.js?v=20260807-4';
+import { homePage } from './pages/home.js?v=20260807-4';
+import { devicesPage } from './pages/devices.js?v=20260807-4';
+import { chatPage } from './pages/chat.js?v=20260807-4';
+import { profilePage } from './pages/profile.js?v=20260807-4';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260807-4';
+import { loginPage } from './components/login.js?v=20260807-4';
+import { login, isLoggedIn } from './auth/auth.js?v=20260807-4';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260807-4';
+import { fetchWeather } from './services/weather-service.js?v=20260807-4';
+import { toggleMockDevice } from './services/device-service.js?v=20260807-4';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260807-4';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260807-4';
+import { escapeHtml } from './utils/html.js?v=20260807-4';
+import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260807-4';
+import { transcribeAudio } from './services/asr-service.js?v=20260807-4';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260807-4';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260807-3';
+} from './presentation.js?v=20260807-4';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
@@ -36,7 +38,9 @@ const PRESS_MOVE_TOLERANCE = 10;
 function tabs() {
   const devicesEntry = state.tab === 'home' ? '<button class="tabs-devices" data-tab="devices">全部设备 <small>›</small></button>' : '';
   return `<nav class="tabs">${devicesEntry}<div class="tabs-grid">${[
-    ['home', 'home', '首页'], ['devices', 'devices', '设备'], ['chat', 'chat', 'AI 对话'], ['profile', 'user', '我的']
+    ['home', 'home', '首页'], ['devices', 'devices', '设备']
+  ].map(([id, glyph, label]) => `<button class="tab ${state.tab === id ? 'active' : ''}" data-tab="${id}">${icon(glyph)}<span>${label}</span></button>`).join('')}<button class="tab voice-tab" data-action="voice" aria-label="语音输入" title="长按说话"><span class="voice-ripple"></span>${icon('mic')}<span>语音</span></button>${[
+    ['chat', 'chat', 'AI 对话'], ['profile', 'user', '我的']
   ].map(([id, glyph, label]) => `<button class="tab ${state.tab === id ? 'active' : ''}" data-tab="${id}">${icon(glyph)}<span>${label}</span></button>`).join('')}</div></nav>`;
 }
 
@@ -99,11 +103,6 @@ function initIntroLottie() {
 function initHomeLottie() {
   const container = document.querySelector('#lottie-stage');
   if (container) loadLottie(container, 'assets/start-robot.json');
-}
-
-function initNoteLottie() {
-  const container = document.querySelector('#note-lottie');
-  if (container) loadLottie(container, 'assets/ai-flow.json');
 }
 
 function renderMessages() {
@@ -281,7 +280,6 @@ function render() {
   renderMessages();
   bind();
   initHomeLottie();
-  initNoteLottie();
   if (activeDeviceId) openDeviceDetail(activeDeviceId);
   if (state.tab === 'chat') requestAnimationFrame(() => scrollChat(true));
 }
@@ -621,26 +619,19 @@ function bind() {
   bindMessageSelection();
   bindSelectionBar();
 
-  // 对话气泡：长按放大 + 波动，达到阈值松手后跳转 AI 对话
+  // 对话气泡：长按跳转 AI 对话
   document.querySelectorAll('.home-note').forEach(note => {
-    const lottie = note.querySelector('.note-lottie');
     let pressTimer = null;
     let longPressTriggered = false;
     const start = (event) => {
       if (event.cancelable) event.preventDefault();
       longPressTriggered = false;
-      lottie?.classList.remove('released');
       clearTimeout(pressTimer);
-      pressTimer = setTimeout(() => {
-        longPressTriggered = true;
-        lottie?.classList.add('pressed');
-      }, 500);
+      pressTimer = setTimeout(() => { longPressTriggered = true; }, 500);
     };
-    const end = (event) => {
+    const end = () => {
       clearTimeout(pressTimer);
       if (longPressTriggered) {
-        lottie?.classList.remove('pressed');
-        lottie?.classList.add('released');
         state.tab = 'chat';
         render();
       }
@@ -650,6 +641,113 @@ function bind() {
     note.addEventListener('pointercancel', end);
     note.addEventListener('pointerleave', end);
   });
+
+  // 底部导航语音按钮：长按录音 → 松手转写 → 跳转 AI 对话填入文字
+  document.querySelectorAll('[data-action="voice"]').forEach(button => {
+    bindVoiceButton(button);
+  });
+}
+
+function playDing() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 1240;
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.2);
+    setTimeout(() => { try { ctx.close(); } catch {} }, 400);
+  } catch {}
+}
+
+function bindVoiceButton(button) {
+  if (!supportsRecording()) {
+    button.title = '当前浏览器不支持语音输入';
+    button.onclick = () => toast('当前浏览器不支持语音输入');
+    return;
+  }
+  let pressTimer = null;
+  let longPressTriggered = false;
+  let recordingStarted = false;
+  let recorder = null;
+  let stopTimer = null;
+
+  const start = async (event) => {
+    if (event.cancelable) event.preventDefault();
+    longPressTriggered = false;
+    recordingStarted = false;
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(async () => {
+      longPressTriggered = true;
+      button.classList.add('recording');
+      recorder = new AudioRecorder();
+      try {
+        await recorder.start();
+        recordingStarted = true;
+        playDing();
+        // 达到上限后自动停止并转写
+        stopTimer = setTimeout(() => finishRecording(), MAX_RECORD_MS);
+      } catch (error) {
+        button.classList.remove('recording');
+        toast(error?.message || '无法访问麦克风');
+      }
+    }, 500);
+  };
+
+  const finishRecording = async () => {
+    button.classList.remove('recording');
+    if (stopTimer) { clearTimeout(stopTimer); stopTimer = null; }
+    if (!recorder) return;
+    const { blob, mimeType, error } = await recorder.stop();
+    if (error) {
+      toast(error?.message || '录音失败');
+      recorder = null;
+      return;
+    }
+    if (!blob) {
+      toast('未录制到有效音频');
+      recorder = null;
+      return;
+    }
+    toast('正在识别语音…');
+    const result = await transcribeAudio(blob);
+    recorder = null;
+    if (result.text) {
+      state.tab = 'chat';
+      render();
+      const input = document.querySelector('#chat-input');
+      if (input) {
+        input.value = result.text;
+        input.focus();
+        const len = input.value.length;
+        input.setSelectionRange(len, len);
+      }
+      toast('语音已转为文字，可编辑后发送');
+    } else {
+      toast(result.error || '未识别到语音，请重试');
+    }
+  };
+
+  const end = () => {
+    clearTimeout(pressTimer);
+    if (longPressTriggered && recordingStarted) {
+      finishRecording();
+    }
+    longPressTriggered = false;
+  };
+
+  button.addEventListener('pointerdown', start);
+  button.addEventListener('pointerup', end);
+  button.addEventListener('pointercancel', end);
+  button.addEventListener('pointerleave', end);
 }
 
 if ('serviceWorker' in navigator) {

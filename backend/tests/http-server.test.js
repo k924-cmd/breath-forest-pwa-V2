@@ -233,3 +233,69 @@ test("GET /v1/weather 无实时适配器时降级返回", async (context) => {
   assert.equal(body.city, "杭州");
   assert.equal(body.reason, "realtime_unavailable");
 });
+
+test("POST /v1/asr 转写成功返回文字", async (context) => {
+  const assistant = {
+    getBootstrap: async () => ({ contractVersion: "1.0.0", mode: "local_mock" }),
+    sendMessage: async () => ({}),
+    transcribeAudio: async (audio, options) => ({ available: true, text: "你好，我是呼吸森林的语音助手" }),
+  };
+  const service = createHttpAssistantServer({ assistant, port: 0 });
+  const address = await service.start();
+  context.after(() => service.close());
+
+  const wav = Buffer.from("fake-wav-bytes");
+  const { response, body } = await jsonResponse(`${address.url}/v1/asr`, {
+    method: "POST",
+    headers: { "Content-Type": "audio/wav" },
+    body: wav,
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(body, { text: "你好，我是呼吸森林的语音助手" });
+});
+
+test("POST /v1/asr 适配器不可用时返回 503 且不泄露内部信息", async (context) => {
+  const assistant = {
+    getBootstrap: async () => ({ contractVersion: "1.0.0", mode: "local_mock" }),
+    sendMessage: async () => ({}),
+    transcribeAudio: async () => ({ available: false, reason: "asr_unavailable" }),
+  };
+  const service = createHttpAssistantServer({ assistant, port: 0 });
+  const address = await service.start();
+  context.after(() => service.close());
+
+  const wav = Buffer.from("fake-wav-bytes");
+  const { response, body } = await jsonResponse(`${address.url}/v1/asr`, {
+    method: "POST",
+    headers: { "Content-Type": "audio/wav" },
+    body: wav,
+  });
+  assert.equal(response.status, 503);
+  assert.equal(body.code, "SERVICE_UNAVAILABLE");
+  assert.equal(body.retryable, true);
+  assert.deepEqual(Object.keys(body).sort(), ["code", "message", "requestId", "retryable"]);
+  assert.doesNotMatch(JSON.stringify(body), /stack|node:|at\s+\w+|asr_unavailable|fake-wav/i);
+});
+
+test("POST /v1/asr 空音频与超限音频返回契约错误", async (context) => {
+  const service = createHttpAssistantServer({ port: 0 });
+  const address = await service.start();
+  context.after(() => service.close());
+
+  const empty = await jsonResponse(`${address.url}/v1/asr`, {
+    method: "POST",
+    headers: { "Content-Type": "audio/wav" },
+    body: Buffer.alloc(0),
+  });
+  assert.equal(empty.response.status, 400);
+  assert.equal(empty.body.code, "INVALID_REQUEST");
+
+  const oversized = await jsonResponse(`${address.url}/v1/asr`, {
+    method: "POST",
+    headers: { "Content-Type": "audio/wav" },
+    body: Buffer.alloc(9 * 1024 * 1024),
+  });
+  assert.equal(oversized.response.status, 413);
+  assert.equal(oversized.body.code, "INPUT_TOO_LONG");
+  assert.doesNotMatch(JSON.stringify([empty.body, oversized.body]), /stack|node:|at\s+\w+/i);
+});

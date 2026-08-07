@@ -1,5 +1,5 @@
-import { icon } from '../components/icons.js?v=20260807-3';
-import { escapeHtml } from '../utils/html.js?v=20260807-3';
+import { icon } from '../components/icons.js?v=20260807-4';
+import { escapeHtml } from '../utils/html.js?v=20260807-4';
 
 export function loginPage() {
   return `<section class="login-overlay" aria-label="管理员登录">

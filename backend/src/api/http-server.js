@@ -6,6 +6,7 @@ export const DEFAULT_HTTP_PORT = 8787;
 export const DEFAULT_ALLOWED_ORIGINS = Object.freeze(["http://localhost:4173", "http://127.0.0.1:4173", "http://localhost:4174", "http://127.0.0.1:4174"]);
 export const DEFAULT_ALLOW_ORIGINS_WILDCARD = false;
 export const DEFAULT_MAX_BODY_BYTES = 64 * 1024;
+export const DEFAULT_MAX_AUDIO_BYTES = 8 * 1024 * 1024;
 export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 
 class HttpTransportError extends Error {
@@ -27,6 +28,7 @@ export function createHttpAssistantServer(options = {}) {
   const actorId = options.actorId ?? "local-http-actor";
   const scopeId = options.scopeId ?? "local-http-scope";
   const maxBodyBytes = options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
+  const maxAudioBytes = options.maxAudioBytes ?? DEFAULT_MAX_AUDIO_BYTES;
   const requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   let requestSequence = 0;
   let listening = false;
@@ -77,6 +79,17 @@ export function createHttpAssistantServer(options = {}) {
         const result = await assistant.getWeather(city);
         if (!timedOut && !response.writableEnded) writeJson(response, 200, result, corsHeaders);
         return;
+      }
+      if (pathname === "/v1/asr") {
+        requireMethod(request, "POST");
+        const mimeType = parseAudioContentType(request.headers["content-type"]);
+        const audio = await readRawBody(request, maxAudioBytes);
+        const result = await assistant.transcribeAudio(audio, { mimeType });
+        if (result?.available === true && typeof result.text === "string" && result.text) {
+          if (!timedOut && !response.writableEnded) writeJson(response, 200, { text: result.text }, corsHeaders);
+          return;
+        }
+        throw new HttpTransportError(503, "SERVICE_UNAVAILABLE", "语音识别服务暂不可用，请稍后再试。", true);
       }
       if (pathname === "/v1/conversations/messages") {
         requireMethod(request, "POST");
@@ -205,6 +218,33 @@ function validatePreflight(request) {
     .map((header) => header.trim().toLowerCase())
     .filter(Boolean);
   if (requestedHeaders.some((header) => header !== "content-type")) throw new HttpTransportError(400, "INVALID_REQUEST", "预检请求只允许 Content-Type 请求头。");
+}
+
+function parseAudioContentType(contentType) {
+  if (typeof contentType !== "string") return "audio/wav";
+  const base = contentType.split(";", 1)[0].trim().toLowerCase();
+  if (!base.startsWith("audio/")) return "audio/wav";
+  return base;
+}
+
+async function readRawBody(request, maxBytes) {
+  const contentLength = Number(request.headers["content-length"] ?? 0);
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) throw new HttpTransportError(413, "INPUT_TOO_LONG", "请求体超过大小限制。");
+  const chunks = [];
+  let total = 0;
+  let exceeded = false;
+  for await (const chunk of request) {
+    total += chunk.length;
+    if (total > maxBytes) {
+      exceeded = true;
+      chunks.length = 0;
+      continue;
+    }
+    if (!exceeded) chunks.push(chunk);
+  }
+  if (exceeded) throw new HttpTransportError(413, "INPUT_TOO_LONG", "请求体超过大小限制。");
+  if (chunks.length === 0) throw new HttpTransportError(400, "INVALID_REQUEST", "请求体不能为空。");
+  return Buffer.concat(chunks);
 }
 
 async function readJsonBody(request, maxBodyBytes) {

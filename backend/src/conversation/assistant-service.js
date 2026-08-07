@@ -36,6 +36,7 @@ export class AssistantService {
     this.taskService = new TaskService(dependencies);
     this.taskSpecs = new Map();
     this.realtime = dependencies.realtime ?? null;
+    this.asr = dependencies.asr ?? null;
   }
 
   async sendMessage(request, transport = {}) {
@@ -191,6 +192,28 @@ export class AssistantService {
       source: snapshot.source ?? "real_time",
       referenceId: snapshot.referenceId ?? "tavily",
       observedAt: snapshot.observedAt,
+    };
+  }
+
+  async transcribeAudio(audio, options = {}) {
+    if (!this.asr?.available) return { available: false, reason: "asr_unavailable" };
+    if (!(audio instanceof Uint8Array) || audio.length === 0) return { available: false, reason: "asr_empty" };
+    let result;
+    try {
+      result = await this.asr.transcribe(audio, { mimeType: options.mimeType });
+    } catch {
+      result = null;
+    }
+    if (!result || typeof result.text !== "string" || !result.text) {
+      return { available: false, reason: "asr_failed" };
+    }
+    return {
+      available: true,
+      text: result.text,
+      language: result.language ?? null,
+      source: "asr",
+      referenceId: result.referenceId ?? "dashscope",
+      observedAt: result.observedAt,
     };
   }
 

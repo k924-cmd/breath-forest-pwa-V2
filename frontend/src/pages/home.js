@@ -1,6 +1,6 @@
-import { icon } from '../components/icons.js?v=20260807-3';
-import { getConnectionPresentation } from '../presentation.js?v=20260807-3';
-import { escapeHtml } from '../utils/html.js?v=20260807-3';
+import { icon } from '../components/icons.js?v=20260807-4';
+import { getConnectionPresentation } from '../presentation.js?v=20260807-4';
+import { escapeHtml } from '../utils/html.js?v=20260807-4';
 
 function realtimeBadge(realtime) {
   const live = Boolean(realtime?.available);
@@ -26,7 +26,7 @@ export function homePage(state, environment, realtime = state.realtime, weather 
       <div class="hero-scrim"></div>
       <header class="home-header"><div class="home-title"><span class="eyebrow">Welcome!</span><h1>${escapeHtml(state.profile.home)}</h1>${weatherBlock(weather, state.profile)}</div><div class="home-header-side"><span class="side-spacer"></span>${realtimeBadge(realtime)}</div></header>
       <div class="home-bot"><button class="luna-walker" data-action="luna" aria-label="呼唤 Luna" aria-expanded="false"><span class="luna-bounce"><div id="lottie-stage" role="img" aria-label="AI 助手机器人"></div></span></button></div>
-      <div class="home-note"><b>Hi，我是 Luna</b><small>${escapeHtml(connection.label)}</small><div class="note-lottie" id="note-lottie" role="img" aria-label="AI 助手动画"></div></div>
+      <div class="home-note"><b>Hi，我是 Luna</b><small>${escapeHtml(connection.label)}</small></div>
     </section>
     <section class="home-cards">
       <div class="air-card home-data-card"><div class="air-score"><b>${metric('score')}</b><span>${hasEnvironment ? escapeHtml(environment.status) : '数据不可用'}</span></div><div class="air-detail"><div><span>PM2.5</span><b>${metric('pm25')} <small>μg/m³</small></b></div><div><span>CO₂</span><b>${metric('co2')} <small>ppm</small></b></div><div><span>湿度</span><b>${metric('humidity')}<small>%</small></b></div></div></div>
