@@ -5,6 +5,22 @@ const QUESTION_WORDS = /状态|怎么样|是否|在线|接入|可用|开着|关�
 const URGENT_WORDS = /呼吸困难|胸痛|昏厥|中毒|煤气|一氧化碳|严重不适|喘不过气/;
 const WEATHER_OR_OUTDOOR_PATTERN = /(天气预报|今天(的)?天气|现在(的)?天气|实时天气|天气怎么样|天气如何|气温(是)?多少|今天.*(下雨|下雪|阴天|晴天|刮风)|室外\s*(PM2\.5|PM25|温度|湿度|空气(质量|指数)?|AQI)|空气质量指数|AQI|外面(现在)?(冷不冷|热不热|多少度|空气质量|空气怎么样))/;
 const WEATHER_CONCEPT_GUARD = /是什么|为什么|原理|怎么工作|如何工作|有什么用|介绍一下|知识|适合/;
+const CITY_LIST = ["北京", "上海", "广州", "深圳", "杭州", "成都", "南京", "武汉", "西安", "重庆", "苏州", "天津", "长沙", "青岛", "厦门", "福州", "昆明", "贵阳", "哈尔滨", "沈阳", "大连", "济南", "郑州", "宁波", "无锡", "合肥", "南昌", "太原", "石家庄", "南宁", "海口", "兰州", "长春", "乌鲁木齐"];
+const EN_CITY_MAP = { beijing: "北京", shanghai: "上海", guangzhou: "广州", shenzhen: "深圳", hangzhou: "杭州", chengdu: "成都", nanjing: "南京", wuhan: "武汉", xian: "西安", chongqing: "重庆", suzhou: "苏州", tianjin: "天津" };
+const GENERIC_CITY_EXCLUSIONS = /今天市|明天市|昨天市|现在市|外面市|室内市/;
+
+export function extractCity(text) {
+  if (typeof text !== "string" || !text.trim()) return null;
+  const t = text.trim();
+  for (const city of CITY_LIST) {
+    if (t.includes(city)) return city;
+  }
+  const generic = t.match(/([一-龥]{2,4})市/);
+  if (generic && !GENERIC_CITY_EXCLUSIONS.test(generic[0])) return generic[1];
+  const en = t.toLowerCase().match(/\b(beijing|shanghai|guangzhou|shenzhen|hangzhou|chengdu|nanjing|wuhan|xian|chongqing|suzhou|tianjin)\b/);
+  if (en) return EN_CITY_MAP[en[1]] ?? en[1];
+  return null;
+}
 
 export const INTENTS = new Set(["chat", "knowledge_query", "environment_query", "device_query", "device_control", "cooking_guard_create", "optimization_create", "task_query", "task_pause", "task_resume", "task_stop", "weather_query", "real_time_query", "confirm", "cancel", "unknown"]);
 const MODEL_FORBIDDEN_STATE_MUTATIONS = new Set(["confirm", "cancel", "task_pause", "task_resume", "task_stop"]);
@@ -55,7 +71,7 @@ export function localRoute(rawText) {
   // is configured, otherwise rejected). Conceptual questions ("室外 PM2.5 是
   // 什么") stay on the knowledge path.
   if (WEATHER_OR_OUTDOOR_PATTERN.test(text) && !WEATHER_CONCEPT_GUARD.test(text)) {
-    return candidate("real_time_query", {}, text);
+    return candidate("real_time_query", { city: extractCity(text) }, text);
   }
 
   if (/(Mock|Replay|模拟优化)/i.test(text) && /(什么|原理|区别|如何|介绍|知识)/.test(text)) return candidate("knowledge_query", { urgent: false }, text);
@@ -125,6 +141,8 @@ function entitiesFromUserText(intent, rawText) {
       return { includeWindow: /开窗|打开.*窗/.test(text), closeWindow: /关窗|关闭.*窗/.test(text), timeText: text };
     case "optimization_create":
       return { mode: optimizationMode(text) };
+    case "real_time_query":
+      return { city: extractCity(text) };
     default:
       return {};
   }

@@ -1,7 +1,7 @@
-import { icon } from '../components/icons.js?v=20260806-9';
-import { getDeviceMeta } from '../mocks/devices.js?v=20260806-9';
-import { formatObservedAt, getConnectionPresentation, getDeviceStateLabel, getSourceLabel } from '../presentation.js?v=20260806-9';
-import { escapeHtml } from '../utils/html.js?v=20260806-9';
+import { icon } from '../components/icons.js?v=20260806-11';
+import { getDeviceMeta } from '../mocks/devices.js?v=20260806-11';
+import { formatObservedAt, getConnectionPresentation, getDeviceStateLabel, getSourceLabel } from '../presentation.js?v=20260806-11';
+import { escapeHtml } from '../utils/html.js?v=20260806-11';
 
 function deviceCard(device, state) {
   const meta = getDeviceMeta(device);
@@ -13,7 +13,7 @@ function deviceCard(device, state) {
   return `<article class="device-card ${grid ? 'card-grid' : ''} ${controllable ? 'integrated' : 'not-integrated'}" data-device-detail="${escapeHtml(device.id)}" tabindex="0">
     ${grid ? `<span class="device-preview device-${meta.id}">${icon(meta.icon)}</span>` : ''}
     <span class="device-icon">${icon(meta.icon)}</span><div class="device-copy"><strong>${escapeHtml(device.name)}</strong><small>${escapeHtml(device.room)} · ${stateText}</small></div>
-    <span class="device-state ${device.connectionStatus === 'online' ? 'on' : ''}">${getSourceLabel(device.source)} · ${device.connectionStatus === 'online' ? '在线' : device.connectionStatus === 'offline' ? '离线' : '待接入'}</span>
+    <span class="device-dot ${device.connectionStatus === 'online' ? 'on' : ''}" title="${getSourceLabel(device.source)} · ${device.connectionStatus === 'online' ? '在线' : device.connectionStatus === 'offline' ? '离线' : '待接入'}"></span>
     <label class="switch" title="${readOnly ? '后端快照只读，请通过 AI 对话操作' : '仅切换本地 UI Mock'}"><input data-device="${escapeHtml(device.id)}" type="checkbox" ${active ? 'checked' : ''} ${controllable && !readOnly ? '' : 'disabled'} aria-label="${escapeHtml(device.name)}开关"><i></i></label>
   </article>`;
 }

@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from './conversation-service.js?v=20260806-9';
+import { getApiBaseUrl } from './conversation-service.js?v=20260806-11';
 
 const REQUEST_TIMEOUT_MS = 5000;
 

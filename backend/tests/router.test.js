@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { localRoute } from "../src/conversation/router.js";
+import { extractCity, localRoute } from "../src/conversation/router.js";
 
 test("问候开头优先于通用知识兜底，但不破坏既有意图", () => {
   const cases = [
@@ -87,4 +87,23 @@ test("英文空气查询提取对应指标", () => {
   assert.deepEqual(localRoute("what is the co2 level").entities.metrics, ["co2"]);
   assert.deepEqual(localRoute("temperature now").entities.metrics, ["temperature"]);
   assert.deepEqual(localRoute("温度现在多少").entities.metrics, ["temperature"]);
+});
+
+test("real_time_query 路由提取城市实体", () => {
+  assert.equal(localRoute("北京天气怎么样").entities.city, "北京");
+  assert.equal(localRoute("今天上海的天气怎么样").entities.city, "上海");
+  assert.equal(localRoute("杭州市今天天气").entities.city, "杭州");
+  assert.equal(localRoute("what is the AQI in hangzhou").entities.city, "杭州");
+  assert.equal(localRoute("what is the AQI in beijing").entities.city, "北京");
+  assert.equal(localRoute("今天天气怎么样").entities.city, null);
+});
+
+test("extractCity 识别中文与英文城市并返回空串文本 null", () => {
+  assert.equal(extractCity("北京天气"), "北京");
+  assert.equal(extractCity("在杭州的天气"), "杭州");
+  assert.equal(extractCity("乌鲁木齐天气"), "乌鲁木齐");
+  assert.equal(extractCity("今天天气"), null);
+  assert.equal(extractCity("现在空气质量"), null);
+  assert.equal(extractCity(""), null);
+  assert.equal(extractCity(null), null);
 });

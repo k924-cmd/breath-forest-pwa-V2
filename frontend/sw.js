@@ -1,10 +1,10 @@
-const CACHE_NAME = 'breath-forest-ui-v13';
+const CACHE_NAME = 'breath-forest-ui-v15';
 const CORE_ASSETS = [
-  './', './index.html', './styles.css?v=20260806-9', './manifest.webmanifest', './src/main.js?v=20260806-9',
-  './src/app/state.js?v=20260806-9', './src/components/icons.js?v=20260806-9', './src/components/message-cards.js?v=20260806-9', './src/presentation.js?v=20260806-9', './src/utils/html.js?v=20260806-9',
-  './src/pages/home.js?v=20260806-9', './src/pages/devices.js?v=20260806-9', './src/pages/chat.js?v=20260806-9', './src/pages/profile.js?v=20260806-9',
-  './src/services/conversation-service.js?v=20260806-9', './src/services/device-service.js?v=20260806-9', './src/services/environment-service.js?v=20260806-9',
-  './src/mocks/conversation.js?v=20260806-9', './src/mocks/devices.js?v=20260806-9', './src/mocks/environment.js?v=20260806-9',
+  './', './index.html', './styles.css?v=20260806-11', './manifest.webmanifest', './src/main.js?v=20260806-11',
+  './src/app/state.js?v=20260806-11', './src/components/icons.js?v=20260806-11', './src/components/message-cards.js?v=20260806-11', './src/presentation.js?v=20260806-11', './src/utils/html.js?v=20260806-11',
+  './src/pages/home.js?v=20260806-11', './src/pages/devices.js?v=20260806-11', './src/pages/chat.js?v=20260806-11', './src/pages/profile.js?v=20260806-11',
+  './src/services/conversation-service.js?v=20260806-11', './src/services/device-service.js?v=20260806-11', './src/services/environment-service.js?v=20260806-11',
+  './src/mocks/conversation.js?v=20260806-11', './src/mocks/devices.js?v=20260806-11', './src/mocks/environment.js?v=20260806-11',
   './vendor/lottie-web.js', './assets/robot.json', './assets/start-robot.json', './assets/ai-flow.json',
   './icons/luna-192.png', './icons/luna-512.png', './icons/luna-apple.png',
   './assets/breath-forest-living-room.webp',

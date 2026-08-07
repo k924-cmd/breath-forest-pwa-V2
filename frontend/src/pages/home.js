@@ -1,6 +1,6 @@
-import { icon } from '../components/icons.js?v=20260806-9';
-import { getConnectionPresentation } from '../presentation.js?v=20260806-9';
-import { escapeHtml } from '../utils/html.js?v=20260806-9';
+import { icon } from '../components/icons.js?v=20260806-11';
+import { getConnectionPresentation } from '../presentation.js?v=20260806-11';
+import { escapeHtml } from '../utils/html.js?v=20260806-11';
 
 function realtimeBadge(realtime) {
   const live = Boolean(realtime?.available);
@@ -9,10 +9,12 @@ function realtimeBadge(realtime) {
 
 const WEATHER_ICONS = { sun: '☀', cloud: '☁', rain: '🌧', snow: '❄', wind: '🌬' };
 
-function weatherBlock(weather) {
+function weatherBlock(weather, profile) {
   const data = weather?.available === true ? weather : { temp: '26', condition: '晴', icon: 'sun' };
   const glyph = WEATHER_ICONS[data.icon] || WEATHER_ICONS.sun;
-  return `<div class="home-weather"><span class="weather-icon">${glyph}</span><div class="weather-meta"><b>${escapeHtml(data.temp)}℃</b><span>${escapeHtml(data.condition)}</span></div></div><p class="weather-greeting">愿您每一次呼吸都清新自在！</p>`;
+  const city = (data.city && data.city.trim()) || profile?.city || '';
+  const cityHtml = city ? `<span class="weather-city">${escapeHtml(city)}</span>` : '';
+  return `<div class="home-weather"><span class="weather-icon">${glyph}</span><div class="weather-meta">${cityHtml}<b>${escapeHtml(data.temp)}℃</b><span>${escapeHtml(data.condition)}</span></div></div><p class="weather-greeting">愿您每一次呼吸都清新自在！</p>`;
 }
 
 export function homePage(state, environment, realtime = state.realtime, weather = null) {
@@ -22,7 +24,7 @@ export function homePage(state, environment, realtime = state.realtime, weather 
   return `<section class="page home-page ${state.tab === 'home' ? 'active' : ''}">
     <section class="home-hero">
       <div class="hero-scrim"></div>
-      <header class="home-header"><div class="home-title"><span class="eyebrow">Welcome!</span><h1>${escapeHtml(state.profile.home)}</h1>${weatherBlock(weather)}</div><div class="home-header-side"><span class="side-spacer"></span>${realtimeBadge(realtime)}</div></header>
+      <header class="home-header"><div class="home-title"><span class="eyebrow">Welcome!</span><h1>${escapeHtml(state.profile.home)}</h1>${weatherBlock(weather, state.profile)}</div><div class="home-header-side"><span class="side-spacer"></span>${realtimeBadge(realtime)}</div></header>
       <div class="home-bot"><button class="luna-walker" data-action="luna" aria-label="呼唤 Luna" aria-expanded="false"><span class="luna-bounce"><div id="lottie-stage" role="img" aria-label="AI 助手机器人"></div></span></button></div>
       <div class="home-note"><b>Hi，我是 Luna</b><small>${escapeHtml(connection.label)}</small><div class="note-lottie" id="note-lottie" role="img" aria-label="AI 助手动画"></div></div>
     </section>

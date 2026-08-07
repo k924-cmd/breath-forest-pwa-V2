@@ -15,7 +15,7 @@ const state = {
   connection: { status: 'disconnected', mode: 'ui_mock' },
   activeTask: null,
   isStreaming: false,
-  profile: { name: '测试用户', home: '测试家庭', reminder: '开启', avatar: '' }
+  profile: { name: '测试用户', home: '测试家庭', reminder: '开启', avatar: '', city: '杭州' }
 };
 
 test('四页面均显示后端断开边界，快捷场景不映射后端任务', () => {
@@ -27,9 +27,20 @@ test('四页面均显示后端断开边界，快捷场景不映射后端任务',
   assert.match(homePage(state, environment), /home-weather/);
   assert.match(homePage(state, environment), /26℃/);
   assert.match(homePage(state, environment), /清新自在/);
+  assert.match(homePage(state, environment), /weather-city/);
   assert.match(devicesPage({ ...state, tab: 'devices' }), /本地 UI Mock \/ 未连接后端/);
+  assert.match(devicesPage({ ...state, tab: 'devices' }), /device-dot/);
   assert.match(chatPage({ ...state, tab: 'chat' }), /本地 UI Mock \/ 未连接后端/);
   assert.match(profilePage({ ...state, tab: 'profile' }), /本地 UI Mock \/ 未连接后端/);
+});
+
+test('设备卡片按接入状态排序：已接入在前、未接入在后', () => {
+  const statuses = state.devices.map(d => d.connectionStatus);
+  assert.equal(statuses.includes('online'), true);
+  assert.equal(statuses.includes('unavailable'), true);
+  const firstUnavailable = statuses.indexOf('unavailable');
+  const afterUnavailable = statuses.slice(firstUnavailable).every(s => s !== 'online');
+  assert.equal(afterUnavailable, true);
 });
 
 test('任务状态以不同文字和图标呈现', () => {

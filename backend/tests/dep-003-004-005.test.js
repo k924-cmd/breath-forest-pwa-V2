@@ -121,7 +121,7 @@ test("AC-095b 配置实时搜索后，天气/室外查询走 Tavily 并返回实
   };
   const { send } = harness({ realtime: fakeRealtime });
   for (const question of ["今天天气怎么样", "天气预报", "室外 PM2.5 是多少", "AQI 是多少"]) {
-    const result = await send(question);
+    const result = await send(question, { city: "杭州" });
     assert.equal(result.responseType, "real_time", question);
     assert.match(result.message.content, /实时信息：杭州今天晴，26°C，AQI 良好。/);
     assert.equal(result.sources[0].type, "real_time");
@@ -138,7 +138,7 @@ test("AC-095c 实时搜索服务失败时降级为拒绝且不编造", async () 
     search: async () => null,
   };
   const { send } = harness({ realtime: failingRealtime });
-  const result = await send("今天天气怎么样");
+  const result = await send("今天天气怎么样", { city: "杭州" });
   assert.equal(result.responseType, "rejection");
   assert.equal(result.error?.code, "ENVIRONMENT_UNAVAILABLE");
   assert.match(result.message.content, /无法提供|不可用/);
@@ -292,4 +292,53 @@ test("AC-098c getWeather 搜索失败时降级", async () => {
   const result = await app.getWeather("杭州");
   assert.equal(result.available, false);
   assert.equal(result.reason, "realtime_failed");
+});
+
+test("REALTIME-CITY-1 消息文本提到城市时用该城市并拼接中文提示查询", async () => {
+  let capturedQuery = null;
+  const fakeRealtime = {
+    available: true,
+    referenceId: "tavily",
+    search: async (query) => {
+      capturedQuery = query;
+      return { answer: "北京今天多云，30°C。", results: [], query, source: "real_time", referenceId: "tavily", observedAt: "2026-08-05T12:00:00.000Z" };
+    },
+  };
+  const { send } = harness({ realtime: fakeRealtime });
+  const result = await send("北京天气怎么样", { city: "杭州" });
+  assert.equal(result.responseType, "real_time");
+  assert.ok(capturedQuery.includes("北京"), capturedQuery);
+  assert.match(capturedQuery, /请用中文回答/);
+});
+
+test("REALTIME-CITY-2 消息未提城市但请求体带 city 时用请求体城市", async () => {
+  let capturedQuery = null;
+  const fakeRealtime = {
+    available: true,
+    referenceId: "tavily",
+    search: async (query) => {
+      capturedQuery = query;
+      return { answer: "杭州今天晴，26°C。", results: [], query, source: "real_time", referenceId: "tavily", observedAt: "2026-08-05T12:00:00.000Z" };
+    },
+  };
+  const { send } = harness({ realtime: fakeRealtime });
+  const result = await send("今天天气怎么样", { city: "杭州" });
+  assert.equal(result.responseType, "real_time");
+  assert.ok(capturedQuery.includes("杭州"), capturedQuery);
+  assert.match(capturedQuery, /请用中文回答/);
+});
+
+test("REALTIME-CITY-3 消息与请求体都无城市时返回 city 澄清", async () => {
+  const fakeRealtime = {
+    available: true,
+    referenceId: "tavily",
+    search: async (query) => ({ answer: "不应被调用", results: [], query, source: "real_time", referenceId: "tavily", observedAt: "2026-08-05T12:00:00.000Z" }),
+  };
+  const { send } = harness({ realtime: fakeRealtime });
+  const result = await send("今天天气怎么样");
+  assert.equal(result.responseType, "clarification");
+  assert.equal(result.clarification.kind, "city");
+  assert.match(result.message.content, /哪个城市/);
+  assert.equal(result.error?.code, "CLARIFICATION_REQUIRED");
+  assert.ok(result.clarification.options.includes("杭州"));
 });

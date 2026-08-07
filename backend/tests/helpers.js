@@ -16,6 +16,7 @@ export function harness(overrides = {}) {
       locale: options.locale ?? "zh-CN",
       timezone: options.timezone ?? "Asia/Shanghai",
       ...(options.continuation ? { continuation: options.continuation } : {}),
+      ...(options.city ? { city: options.city } : {}),
     }, options.transport ?? transport);
   };
   return { app, send };

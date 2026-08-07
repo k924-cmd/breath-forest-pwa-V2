@@ -7,9 +7,17 @@ export const DEVICE_CATALOG = [
   { id: 'fan', type: 'circulation_fan', name: '循环风机', room: '客厅', icon: 'fan', controlSupport: 'not_integrated', defaultState: 'unknown' }
 ];
 
+export function sortDevicesByConnection(devices) {
+  if (!Array.isArray(devices)) return [];
+  return [...devices].sort((a, b) => {
+    const rank = device => device?.connectionStatus === 'online' ? 0 : 1;
+    return rank(a) - rank(b);
+  });
+}
+
 export function createMockDevices() {
   const observedAt = new Date().toISOString();
-  return DEVICE_CATALOG.map(device => ({
+  return sortDevicesByConnection(DEVICE_CATALOG.map(device => ({
     id: device.id,
     type: device.type,
     name: device.name,
@@ -25,7 +33,7 @@ export function createMockDevices() {
     observedAt,
     source: 'mock',
     uiMockOnly: true
-  }));
+  })));
 }
 
 export function getDeviceMeta(device) {
@@ -40,5 +48,5 @@ export function findDevice(deviceId, devices = []) {
 
 export function normalizeBackendDevices(devices) {
   if (!Array.isArray(devices)) return [];
-  return devices.filter(device => device && typeof device.id === 'string').map(device => ({ ...device, uiMockOnly: false }));
+  return sortDevicesByConnection(devices.filter(device => device && typeof device.id === 'string').map(device => ({ ...device, uiMockOnly: false })));
 }
