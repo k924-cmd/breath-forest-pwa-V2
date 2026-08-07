@@ -61,7 +61,8 @@ button { cursor: pointer; }
 }
 /* 底部导航卡高度：首页含「全部设备」入口行更高；内容底部留出导航卡空间 */
 .app { --nav-bleed: 90px; }
-.app.home-mode { --nav-bleed: 125px; }
+.app.home-mode { --nav-bleed: 136px; }
+.app.chat-mode { --nav-bleed: 67px; }
 @media (prefers-reduced-motion: reduce) {
   html, body, #app { scroll-behavior: auto; }
 }
@@ -944,8 +945,8 @@ h1, h2, p { margin: 0; }
   left: 50%;
   bottom: 12px;
   transform: translateX(-50%);
-  width: min(636px, calc(100% - 44px));
-  border-radius: 22px;
+  width: min(636px, calc(100% - 32px));
+  border-radius: 28px;
   padding: 12px 16px 21px;
   background: rgba(255, 255, 255, .78);
   border: 1px solid var(--glass-border);
@@ -1692,12 +1693,12 @@ h1, h2, p { margin: 0; }
 .home-note::before {
   content: "";
   position: absolute;
-  left: -8px;
+  left: -14px;
   bottom: 14px;
   width: 14px;
   height: 20px;
   background: var(--glass-bg-strong);
-  clip-path: polygon(0 50%, 100% 0, 100% 100%);
+  clip-path: polygon(100% 0, 100% 100%, 0 50%);
 }
 .home-note b, .home-note small { display: block; position: relative; }
 .home-note b { font-size: 13px; }
