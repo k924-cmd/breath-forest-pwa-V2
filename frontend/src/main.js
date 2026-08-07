@@ -1,26 +1,26 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260807-5';
-import { icon } from './components/icons.js?v=20260807-5';
-import { homePage } from './pages/home.js?v=20260807-5';
-import { devicesPage } from './pages/devices.js?v=20260807-5';
-import { chatPage } from './pages/chat.js?v=20260807-5';
-import { profilePage } from './pages/profile.js?v=20260807-5';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260807-5';
-import { loginPage } from './components/login.js?v=20260807-5';
-import { login, isLoggedIn } from './auth/auth.js?v=20260807-5';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260807-5';
-import { fetchWeather } from './services/weather-service.js?v=20260807-5';
-import { toggleMockDevice } from './services/device-service.js?v=20260807-5';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260807-5';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260807-5';
-import { escapeHtml } from './utils/html.js?v=20260807-5';
-import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260807-5';
-import { transcribeAudio } from './services/asr-service.js?v=20260807-5';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260807-5';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260807-8';
+import { icon } from './components/icons.js?v=20260807-8';
+import { homePage } from './pages/home.js?v=20260807-8';
+import { devicesPage } from './pages/devices.js?v=20260807-8';
+import { chatPage } from './pages/chat.js?v=20260807-8';
+import { profilePage } from './pages/profile.js?v=20260807-8';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260807-8';
+import { loginPage } from './components/login.js?v=20260807-8';
+import { login, isLoggedIn } from './auth/auth.js?v=20260807-8';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260807-8';
+import { fetchWeather } from './services/weather-service.js?v=20260807-8';
+import { toggleMockDevice } from './services/device-service.js?v=20260807-8';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260807-8';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260807-8';
+import { escapeHtml } from './utils/html.js?v=20260807-8';
+import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260807-8';
+import { transcribeAudio } from './services/asr-service.js?v=20260807-8';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260807-8';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260807-5';
+} from './presentation.js?v=20260807-8';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
@@ -680,6 +680,9 @@ function bindVoiceButton(button) {
     button.onclick = () => toast('当前浏览器不支持语音输入');
     return;
   }
+  // 阻止 iOS 长按弹出系统菜单（选择/查找/分享）
+  button.addEventListener('contextmenu', event => event.preventDefault());
+  button.addEventListener('selectstart', event => event.preventDefault());
   let pressTimer = null;
   let longPressTriggered = false;
   let recordingStarted = false;
@@ -727,16 +730,7 @@ function bindVoiceButton(button) {
     const result = await transcribeAudio(blob);
     recorder = null;
     if (result.text) {
-      state.tab = 'chat';
-      render();
-      const input = document.querySelector('#chat-input');
-      if (input) {
-        input.value = result.text;
-        input.focus();
-        const len = input.value.length;
-        input.setSelectionRange(len, len);
-      }
-      toast('语音已转为文字，可编辑后发送');
+      showVoiceConfirmModal(result.text);
     } else {
       toast(result.error || '未识别到语音，请重试');
     }
@@ -754,6 +748,52 @@ function bindVoiceButton(button) {
   button.addEventListener('pointerup', end);
   button.addEventListener('pointercancel', end);
   button.addEventListener('pointerleave', end);
+}
+
+// 语音转写确认弹窗：显示识别文字，发送→跳转 AI 对话并发送；取消→留在当前页
+function showVoiceConfirmModal(text) {
+  const modalRoot = document.querySelector('#modal-root');
+  if (!modalRoot) return;
+  modalRoot.innerHTML = `<div class="modal voice-confirm-modal"><section class="voice-confirm-sheet" role="dialog" aria-modal="true"><header><span class="voice-confirm-icon">${icon('mic')}</span><div><span class="eyebrow">VOICE INPUT</span><h2>确认语音内容</h2></div><button data-action="close" aria-label="取消">×</button></header><textarea id="voice-confirm-text" rows="3" maxlength="4000" aria-label="语音识别文字">${escapeHtml(text)}</textarea><div class="voice-confirm-actions"><button class="voice-cancel" data-action="voice-cancel">取消</button><button class="voice-send" data-action="voice-send">发送</button></div></section></div>`;
+  const textarea = document.querySelector('#voice-confirm-text');
+  if (textarea) {
+    textarea.focus();
+    const len = textarea.value.length;
+    textarea.setSelectionRange(len, len);
+  }
+  bindVoiceConfirmActions();
+}
+
+function bindVoiceConfirmActions() {
+  document.querySelectorAll('[data-action="voice-cancel"]').forEach(button => {
+    button.onclick = () => {
+      const modalRoot = document.querySelector('#modal-root');
+      if (modalRoot) modalRoot.innerHTML = '';
+    };
+  });
+  document.querySelectorAll('[data-action="voice-send"]').forEach(button => {
+    button.onclick = () => {
+      const textarea = document.querySelector('#voice-confirm-text');
+      const text = textarea ? textarea.value.trim() : '';
+      const modalRoot = document.querySelector('#modal-root');
+      if (modalRoot) modalRoot.innerHTML = '';
+      if (!text) {
+        toast('语音内容为空');
+        return;
+      }
+      if (state.tab !== 'chat') {
+        state.tab = 'chat';
+        render();
+      }
+      sendMessage(text);
+    };
+  });
+  document.querySelectorAll('.voice-confirm-modal [data-action="close"]').forEach(button => {
+    button.onclick = () => {
+      const modalRoot = document.querySelector('#modal-root');
+      if (modalRoot) modalRoot.innerHTML = '';
+    };
+  });
 }
 
 if ('serviceWorker' in navigator) {

@@ -59,10 +59,13 @@ button { cursor: pointer; }
     linear-gradient(180deg, rgba(15, 23, 42, .06) 0%, rgba(246, 250, 248, .92) 62%, rgba(246, 250, 248, .96) 100%),
     url('assets/breath-forest-living-room.webp') center 28% / cover no-repeat;
 }
-/* 底部导航卡高度：首页含「全部设备」入口行更高；内容底部留出导航卡空间 */
-.app { --nav-bleed: 90px; }
-.app.home-mode { --nav-bleed: 136px; }
-.app.chat-mode { --nav-bleed: 67px; }
+/* 底部导航卡高度：首页含「全部设备」入口行更高；内容底部留出导航卡空间。
+   tabs 卡片：首页 124px + 12px bottom + 10px 间距 = 146px（卡片受 flex 推挤会再溢出
+   约 8px，故 home 多留 8px → 154px）；设备/我的 89px + 12 + 10 = 111px；
+   chat 无「全部设备」行 89px + 12 + 10 = 111px */
+.app { --nav-bleed: 111px; }
+.app.home-mode { --nav-bleed: 154px; }
+.app.chat-mode { --nav-bleed: 111px; }
 @media (prefers-reduced-motion: reduce) {
   html, body, #app { scroll-behavior: auto; }
 }
@@ -994,6 +997,9 @@ h1, h2, p { margin: 0; }
   color: #94a3b8;
   font-size: 10px;
   position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .tab svg { width: 25px; height: 25px; }
 .tab.active { color: var(--accent); }
@@ -1115,6 +1121,83 @@ h1, h2, p { margin: 0; }
 .log-list span, .log-list b { display: block; }
 .log-list span { font-size: 10px; color: var(--muted); }
 .log-list b { font-size: 13px; margin-top: 4px; }
+
+/* 语音转写确认弹窗 */
+.voice-confirm-sheet {
+  width: min(650px, 100%);
+  margin: auto;
+  background: rgba(255, 255, 255, .9);
+  border: 1px solid var(--glass-border);
+  border-bottom-color: var(--glass-border-outer);
+  border-radius: 24px;
+  padding: 19px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), 0 20px 60px rgba(15, 23, 42, .3);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+.voice-confirm-sheet header { display: flex; align-items: center; gap: 11px; margin-bottom: 13px; }
+.voice-confirm-sheet .voice-confirm-icon {
+  width: 38px; height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(37, 99, 235, .12);
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+.voice-confirm-sheet .voice-confirm-icon svg { width: 19px; height: 19px; }
+.voice-confirm-sheet h2 { font-size: 19px; }
+.voice-confirm-sheet header > button {
+  border: 0;
+  width: 31px; height: 31px;
+  border-radius: 50%;
+  font-size: 22px;
+  background: var(--hover);
+  color: var(--muted);
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+.voice-confirm-sheet textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  border: 1px solid rgba(148, 163, 184, .35);
+  border-radius: 14px;
+  padding: 12px 13px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: rgba(255, 255, 255, .7);
+  outline: none;
+  font-family: inherit;
+}
+.voice-confirm-sheet textarea:focus {
+  border-color: rgba(147, 197, 253, .85);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+}
+.voice-confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+.voice-confirm-actions button {
+  flex: 1;
+  border: 0;
+  border-radius: 14px;
+  padding: 12px 0;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+}
+.voice-confirm-actions .voice-cancel {
+  background: var(--hover);
+  color: var(--muted);
+}
+.voice-confirm-actions .voice-send {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 6px 14px -6px rgba(37, 99, 235, .55);
+}
 
 .profile-sheet {
   width: min(650px, 100%);
