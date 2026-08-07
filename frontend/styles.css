@@ -1264,6 +1264,39 @@ h1, h2, p { margin: 0; }
   letter-spacing: .2px;
   text-align: center;
 }
+/* 长按录音中：动态声波 */
+.voice-listening {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 128px;
+  gap: 18px;
+  padding: 10px 0;
+}
+.voice-wave {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 46px;
+}
+.voice-wave i {
+  width: 5px;
+  height: 12px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #60a5fa, #3b82f6);
+  animation: voiceWave .9s ease-in-out infinite;
+}
+.voice-wave i:nth-child(2) { animation-delay: .1s; }
+.voice-wave i:nth-child(3) { animation-delay: .2s; }
+.voice-wave i:nth-child(4) { animation-delay: .3s; background: linear-gradient(180deg, #6ee7b7, #34d399); }
+.voice-wave i:nth-child(5) { animation-delay: .4s; }
+.voice-wave i:nth-child(6) { animation-delay: .5s; }
+.voice-wave i:nth-child(7) { animation-delay: .6s; }
+@keyframes voiceWave {
+  0%, 100% { transform: scaleY(.4); }
+  50% { transform: scaleY(1.3); }
+}
 .voice-error-mark {
   width: 46px; height: 46px;
   border-radius: 50%;

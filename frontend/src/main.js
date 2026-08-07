@@ -1,26 +1,26 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260807-9';
-import { icon } from './components/icons.js?v=20260807-9';
-import { homePage } from './pages/home.js?v=20260807-9';
-import { devicesPage } from './pages/devices.js?v=20260807-9';
-import { chatPage } from './pages/chat.js?v=20260807-9';
-import { profilePage } from './pages/profile.js?v=20260807-9';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260807-9';
-import { loginPage } from './components/login.js?v=20260807-9';
-import { login, isLoggedIn } from './auth/auth.js?v=20260807-9';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260807-9';
-import { fetchWeather } from './services/weather-service.js?v=20260807-9';
-import { toggleMockDevice } from './services/device-service.js?v=20260807-9';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260807-9';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260807-9';
-import { escapeHtml } from './utils/html.js?v=20260807-9';
-import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260807-9';
-import { transcribeAudio } from './services/asr-service.js?v=20260807-9';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260807-9';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260807-10';
+import { icon } from './components/icons.js?v=20260807-10';
+import { homePage } from './pages/home.js?v=20260807-10';
+import { devicesPage } from './pages/devices.js?v=20260807-10';
+import { chatPage } from './pages/chat.js?v=20260807-10';
+import { profilePage } from './pages/profile.js?v=20260807-10';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260807-10';
+import { loginPage } from './components/login.js?v=20260807-10';
+import { login, isLoggedIn } from './auth/auth.js?v=20260807-10';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260807-10';
+import { fetchWeather } from './services/weather-service.js?v=20260807-10';
+import { toggleMockDevice } from './services/device-service.js?v=20260807-10';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260807-10';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260807-10';
+import { escapeHtml } from './utils/html.js?v=20260807-10';
+import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260807-10';
+import { transcribeAudio } from './services/asr-service.js?v=20260807-10';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260807-10';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260807-9';
+} from './presentation.js?v=20260807-10';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
@@ -697,7 +697,10 @@ function bindVoiceButton(button) {
     pressTimer = setTimeout(async () => {
       longPressTriggered = true;
       button.classList.add('recording');
+      // 长按一开始立即弹出录音中弹窗，给用户即时反馈
+      const modalId = showVoiceConfirmModal(null, 'recording');
       recorder = new AudioRecorder();
+      recorder.__voiceModalId = modalId;
       try {
         await recorder.start();
         recordingStarted = true;
@@ -706,6 +709,9 @@ function bindVoiceButton(button) {
         stopTimer = setTimeout(() => finishRecording(), MAX_RECORD_MS);
       } catch (error) {
         button.classList.remove('recording');
+        // 权限被拒等：关闭录音中弹窗并提示
+        const modalRoot = document.querySelector('#modal-root');
+        if (modalRoot && modalRoot.innerHTML) modalRoot.innerHTML = '';
         toast(error?.message || '无法访问麦克风');
       }
     }, 500);
@@ -726,8 +732,9 @@ function bindVoiceButton(button) {
       recorder = null;
       return;
     }
-    // 松手即弹窗：先出 loading 窗口，识别完成后填充文字
-    const modalId = showVoiceConfirmModal(null);
+    // 复用已弹出的弹窗：先切到识别 loading 态，转写完成后再填充
+    const modalId = recorder.__voiceModalId || showVoiceConfirmModal(null, 'loading');
+    updateVoiceConfirmModal(modalId, null, null, 'loading');
     const result = await transcribeAudio(blob);
     recorder = null;
     updateVoiceConfirmModal(modalId, result.text, result.error || null);
@@ -755,15 +762,20 @@ const VOICE_LOADING_TEXTS = [
   '嗯嗯，听到了听到了…'
 ];
 
-// 语音转写确认弹窗：text 为 null 时展示 loading；识别完成后 updateVoiceConfirmModal 填充
-function showVoiceConfirmModal(text) {
+// 语音转写弹窗：phase='recording' 长按中正在聆听；phase='loading' 识别中；
+// phase=null 且 text 有值 → 直接展示完成态。识别完成后 updateVoiceConfirmModal 填充。
+function showVoiceConfirmModal(text, phase = 'loading') {
   const modalRoot = document.querySelector('#modal-root');
   if (!modalRoot) return null;
   const modalId = `voice-confirm-${Date.now()}`;
-  const loadingHtml = text == null
-    ? `<div class="voice-loading"><div class="voice-loading-orbs"><i></i><i></i><i></i></div><p class="voice-loading-text">正在竖起耳朵听你说…</p></div>`
-    : '';
-  modalRoot.innerHTML = `<div class="modal voice-confirm-modal" data-voice-modal="${modalId}"><section class="voice-confirm-sheet" role="dialog" aria-modal="true"><header><span class="voice-confirm-icon">${icon('mic')}</span><div><span class="eyebrow">VOICE INPUT</span><h2>确认语音内容</h2></div><button data-action="close" aria-label="取消">×</button></header><div class="voice-confirm-body">${loadingHtml}<textarea id="voice-confirm-text" rows="3" maxlength="4000" aria-label="语音识别文字" ${text == null ? 'hidden' : ''}>${text == null ? '' : escapeHtml(text)}</textarea></div><div class="voice-confirm-actions"><button class="voice-cancel" data-action="voice-cancel" ${text == null ? 'disabled' : ''}>取消</button><button class="voice-send" data-action="voice-send" ${text == null ? 'disabled' : ''}>发送</button></div></section></div>`;
+  const isPending = text == null;
+  let pendingHtml = '';
+  if (isPending && phase === 'recording') {
+    pendingHtml = `<div class="voice-listening"><div class="voice-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><p class="voice-loading-text">正在聆听，请说话…</p></div>`;
+  } else if (isPending) {
+    pendingHtml = `<div class="voice-loading"><div class="voice-loading-orbs"><i></i><i></i><i></i></div><p class="voice-loading-text">正在竖起耳朵听你说…</p></div>`;
+  }
+  modalRoot.innerHTML = `<div class="modal voice-confirm-modal" data-voice-modal="${modalId}"><section class="voice-confirm-sheet" role="dialog" aria-modal="true"><header><span class="voice-confirm-icon">${icon('mic')}</span><div><span class="eyebrow">VOICE INPUT</span><h2>${isPending ? '聆听你的声音' : '确认语音内容'}</h2></div><button data-action="close" aria-label="取消">×</button></header><div class="voice-confirm-body">${pendingHtml}<textarea id="voice-confirm-text" rows="3" maxlength="4000" aria-label="语音识别文字" ${text == null ? 'hidden' : ''}>${text == null ? '' : escapeHtml(text)}</textarea></div><div class="voice-confirm-actions"><button class="voice-cancel" data-action="voice-cancel" ${text == null ? 'disabled' : ''}>取消</button><button class="voice-send" data-action="voice-send" ${text == null ? 'disabled' : ''}>发送</button></div></section></div>`;
   if (text != null) {
     const textarea = document.querySelector(`[data-voice-modal="${modalId}"] #voice-confirm-text`);
     if (textarea) {
@@ -772,10 +784,10 @@ function showVoiceConfirmModal(text) {
       textarea.setSelectionRange(len, len);
     }
   }
-  if (text == null) {
-    // 俏皮 loading 话术轮播
+  if (isPending) {
+    // 俏皮话术轮播（识别中才轮播；录音中固定"正在聆听"）
     const textEl = document.querySelector(`[data-voice-modal="${modalId}"] .voice-loading-text`);
-    if (textEl) {
+    if (textEl && phase !== 'recording') {
       let index = 0;
       const tick = () => {
         index = (index + 1) % VOICE_LOADING_TEXTS.length;
@@ -789,7 +801,7 @@ function showVoiceConfirmModal(text) {
   return modalId;
 }
 
-function updateVoiceConfirmModal(modalId, text, error) {
+function updateVoiceConfirmModal(modalId, text, error, phase) {
   const modal = document.querySelector(`[data-voice-modal="${modalId}"]`);
   if (!modal) return;
   // 停止 loading 话术轮播
@@ -799,11 +811,29 @@ function updateVoiceConfirmModal(modalId, text, error) {
     delete loadingText.dataset.voiceTimer;
   }
   const body = modal.querySelector('.voice-confirm-body');
-  const textarea = modal.querySelector('#voice-confirm-text');
   const cancel = modal.querySelector('[data-action="voice-cancel"]');
   const send = modal.querySelector('[data-action="voice-send"]');
   if (!body) return;
+  // 录音中 → 识别中：切换 body 为 loading 泡泡
+  if (phase === 'loading') {
+    const h2 = modal.querySelector('h2');
+    if (h2) h2.textContent = '正在识别…';
+    body.innerHTML = `<div class="voice-loading"><div class="voice-loading-orbs"><i></i><i></i><i></i></div><p class="voice-loading-text">正在竖起耳朵听你说…</p></div>`;
+    const textEl = body.querySelector('.voice-loading-text');
+    if (textEl) {
+      let index = 0;
+      const tick = () => {
+        index = (index + 1) % VOICE_LOADING_TEXTS.length;
+        textEl.textContent = VOICE_LOADING_TEXTS[index];
+      };
+      const timer = setInterval(tick, 1600);
+      textEl.dataset.voiceTimer = String(timer);
+    }
+    return;
+  }
   if (error) {
+    const h2 = modal.querySelector('h2');
+    if (h2) h2.textContent = '确认语音内容';
     body.innerHTML = `<div class="voice-loading voice-error"><div class="voice-error-mark">!</div><p class="voice-loading-text">${escapeHtml(error || '没听清，再说一次嘛～')}</p></div>`;
     if (cancel) cancel.disabled = false;
     if (send) send.disabled = true;
@@ -811,11 +841,15 @@ function updateVoiceConfirmModal(modalId, text, error) {
   }
   const clean = typeof text === 'string' ? text.trim() : '';
   if (!clean) {
+    const h2 = modal.querySelector('h2');
+    if (h2) h2.textContent = '确认语音内容';
     body.innerHTML = `<div class="voice-loading voice-error"><div class="voice-error-mark">!</div><p class="voice-loading-text">好像是空白的，再试一次好吗？</p></div>`;
     if (cancel) cancel.disabled = false;
     if (send) send.disabled = true;
     return;
   }
+  const h2 = modal.querySelector('h2');
+  if (h2) h2.textContent = '确认语音内容';
   body.innerHTML = `<textarea id="voice-confirm-text" rows="3" maxlength="4000" aria-label="语音识别文字">${escapeHtml(clean)}</textarea>`;
   const newTextarea = modal.querySelector('#voice-confirm-text');
   if (newTextarea) {

@@ -1,7 +1,7 @@
-import { icon } from '../components/icons.js?v=20260807-9';
-import { getDeviceMeta } from '../mocks/devices.js?v=20260807-9';
-import { formatObservedAt, getConnectionPresentation, getDeviceStateLabel, getSourceLabel } from '../presentation.js?v=20260807-9';
-import { escapeHtml } from '../utils/html.js?v=20260807-9';
+import { icon } from '../components/icons.js?v=20260807-10';
+import { getDeviceMeta } from '../mocks/devices.js?v=20260807-10';
+import { formatObservedAt, getConnectionPresentation, getDeviceStateLabel, getSourceLabel } from '../presentation.js?v=20260807-10';
+import { escapeHtml } from '../utils/html.js?v=20260807-10';
 
 function deviceCard(device, state) {
   const meta = getDeviceMeta(device);
