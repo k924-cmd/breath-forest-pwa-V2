@@ -1,24 +1,24 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260807-1';
-import { icon } from './components/icons.js?v=20260807-1';
-import { homePage } from './pages/home.js?v=20260807-1';
-import { devicesPage } from './pages/devices.js?v=20260807-1';
-import { chatPage } from './pages/chat.js?v=20260807-1';
-import { profilePage } from './pages/profile.js?v=20260807-1';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260807-1';
-import { loginPage } from './components/login.js?v=20260807-1';
-import { login, isLoggedIn } from './auth/auth.js?v=20260807-1';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260807-1';
-import { fetchWeather } from './services/weather-service.js?v=20260807-1';
-import { toggleMockDevice } from './services/device-service.js?v=20260807-1';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260807-1';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260807-1';
-import { escapeHtml } from './utils/html.js?v=20260807-1';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260807-1';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260807-2';
+import { icon } from './components/icons.js?v=20260807-2';
+import { homePage } from './pages/home.js?v=20260807-2';
+import { devicesPage } from './pages/devices.js?v=20260807-2';
+import { chatPage } from './pages/chat.js?v=20260807-2';
+import { profilePage } from './pages/profile.js?v=20260807-2';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260807-2';
+import { loginPage } from './components/login.js?v=20260807-2';
+import { login, isLoggedIn } from './auth/auth.js?v=20260807-2';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260807-2';
+import { fetchWeather } from './services/weather-service.js?v=20260807-2';
+import { toggleMockDevice } from './services/device-service.js?v=20260807-2';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260807-2';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260807-2';
+import { escapeHtml } from './utils/html.js?v=20260807-2';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260807-2';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260807-1';
+} from './presentation.js?v=20260807-2';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();

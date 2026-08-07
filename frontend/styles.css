@@ -41,20 +41,27 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body, #app { width: 100%; height: 100%; overflow: hidden; }
 body { margin: 0; background: var(--bg); }
+/* iOS PWA 独立窗口：100% 可能不含底部 Home 条，改用 100vh 铺满视觉视口 */
+@media (display-mode: standalone) {
+  html, body, #app { height: 100vh; }
+}
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 /* 全屏背景：照片铺满整个应用容器，玻璃卡浮于其上 */
 .app {
-  height: 100dvh;
+  height: 100vh;
   max-width: 680px;
   margin: auto;
-  padding: calc(12px + env(safe-area-inset-top)) 16px calc(134px + env(safe-area-inset-bottom));
+  padding: calc(12px + env(safe-area-inset-top)) 16px calc(var(--nav-bleed, 90px) + env(safe-area-inset-bottom));
   overflow: hidden;
   position: relative;
   background:
     linear-gradient(180deg, rgba(15, 23, 42, .06) 0%, rgba(246, 250, 248, .92) 62%, rgba(246, 250, 248, .96) 100%),
     url('assets/breath-forest-living-room.webp') center 28% / cover no-repeat;
 }
+/* 底部导航卡高度：首页含「全部设备」入口行更高；内容底部留出导航卡空间 */
+.app { --nav-bleed: 90px; }
+.app.home-mode { --nav-bleed: 125px; }
 @media (prefers-reduced-motion: reduce) {
   html, body, #app { scroll-behavior: auto; }
 }
