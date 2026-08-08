@@ -38,7 +38,7 @@ test("MiMo TTS 请求结构符合端点、模型、api-key 与音频参数约束
   assert.equal(captured.body.model, MIMO_TTS_DEFAULT_MODEL);
   assert.equal(captured.body.stream, false);
   assert.equal(captured.body.audio.format, "wav");
-  assert.equal(captured.body.audio.voice, "冰糖");
+  assert.equal(captured.body.audio.voice, "茉莉");
   assert.equal(captured.body.messages[0].role, "user");
   assert.equal(captured.body.messages[1].role, "assistant");
   assert.equal(captured.body.messages[1].content, "空气净化器已开启");

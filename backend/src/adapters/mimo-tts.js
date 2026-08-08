@@ -14,7 +14,7 @@ import { loadDotEnvIfPresent } from "../config/env.js";
 
 export const MIMO_TTS_DEFAULT_ENDPOINT = "https://api.xiaomimimo.com/v1/chat/completions";
 export const MIMO_TTS_DEFAULT_MODEL = "mimo-v2.5-tts";
-export const MIMO_TTS_DEFAULT_VOICE = "冰糖";
+export const MIMO_TTS_DEFAULT_VOICE = "茉莉";
 export const MIMO_TTS_DEFAULT_FORMAT = "wav";
 export const MIMO_TTS_TIMEOUT_MS_CAP = 30_000;
 export const MIMO_TTS_MAX_TEXT_BYTES = 4 * 1024;
@@ -76,7 +76,9 @@ export class MiMoTtsAdapter {
         body: JSON.stringify({
           model: this.model,
           messages: [
-            { role: "user", content: "请用自然、清晰的语音合成下面的文本。" },
+            { role: "user", content: sing
+              ? "请用轻柔、平稳、缓慢的歌声唱出下面的歌词，像哄人入睡一样温柔，语速放慢，音准尽量稳定。"
+              : "请用自然、清晰的语音合成下面的文本。" },
             { role: "assistant", content },
           ],
           audio: { format, voice },

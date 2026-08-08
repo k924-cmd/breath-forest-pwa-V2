@@ -20,7 +20,7 @@ export const EASTER_EGG_SYSTEM_PROMPT = [
 ].join("\n");
 
 export const EASTER_REPLY_TEMPLATE = (continuation) =>
-  `🎵 让我跟着哼两句：${continuation}\n唱得不错～不过我是你的空气小助手 Luna，净化器、新风、窗户、抽油烟机我都能帮你照顾。有需要随时喊我！`;
+  `🎵 Luna 跟着哼了两句：${continuation}\n哈哈……人家唱歌跑调嘛～不过我可是你的空气小助手 Luna，净化器、新风、窗户、抽油烟机都能帮你照顾好。唱歌不擅长，管家可是专业的！有需要随时喊我～`;
 
 export function parseEasterDecision(content) {
   try {
