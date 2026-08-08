@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 呼吸森林 V2 一键启动：本地后端 + cloudflared 隧道 + 自动同步隧道地址到前端
+# 呼吸森林 V2 一键启动：DNS 健康检查 + 本地后端 + cloudflared 隧道 + 自动同步隧道地址到前端
 #
 # 用法：
 #   bash dev-up.sh          # 完整启动（后端 + 隧道 + 地址同步）
@@ -25,7 +25,7 @@ SYNC="yes"
 
 mkdir -p "$ROOT/.tmp"
 
-echo "==> [1/5] 检查依赖"
+echo "==> [1/6] 检查依赖"
 if [[ ! -f "$CLOUDFLARED" ]]; then
   echo "错误：cloudflared 未安装，请先执行 winget install --id Cloudflare.cloudflared -e"
   exit 1
@@ -41,7 +41,37 @@ if [[ "$NODE_MAJOR" -lt 20 ]]; then
   exit 1
 fi
 
-echo "==> [2/5] 启动本地后端 (0.0.0.0:8787, wildcard CORS)"
+echo "==> [2/6] DNS 健康检查（能否解析 *.trycloudflare.com）"
+# 运营商 DNS 偶发屏蔽/解析失败 *.trycloudflare.com（返回 NXDOMAIN 或超时），
+# 而 cloudflared 走自己的连接不受影响，导致隧道地址本机连不上。
+# 用 trycloudflare.com 本域探测（Cloudflare 将其解析到 104.16.x）：
+# 本域都查不到时，具体隧道子域必然更查不到。随机子域不可用（Cloudflare 只对已建隧道建 DNS 记录）。
+PROBE_DOMAIN="trycloudflare.com"
+if node -e "
+  const dns = require('dns');
+  const timer = setTimeout(() => process.exit(1), 6000);
+  dns.lookup('$PROBE_DOMAIN', { all: true }, (e) => {
+    clearTimeout(timer);
+    process.exit(e ? 1 : 0);
+  });
+" >/dev/null 2>&1; then
+  echo "    系统 DNS 可解析 trycloudflare.com ✓"
+else
+  echo "    ⚠️ 系统 DNS 解析 trycloudflare.com 失败"
+  if nslookup -timeout=3 "$PROBE_DOMAIN" 1.1.1.1 2>/dev/null | grep -qE '104\.16\.|2606:4700::6810'; then
+    echo "    → 公共 DNS (1.1.1.1) 可解析，确认是本机/运营商 DNS 问题"
+    ACTIVE_IFACE=$(powershell -NoProfile -Command "(Get-NetRoute -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric | Select-Object -First 1).InterfaceAlias" 2>/dev/null | tr -d '\r\n') || true
+    [[ -z "$ACTIVE_IFACE" ]] && ACTIVE_IFACE="你的网卡名"
+    echo "    → 修复命令（需管理员权限，复制执行）："
+    echo "      powershell -NoProfile -Command \"Set-DnsClientServerAddress -InterfaceAlias '$ACTIVE_IFACE' -ServerAddresses ('1.1.1.1','8.8.8.8'); Set-DnsClientServerAddress -InterfaceAlias '$ACTIVE_IFACE' -ServerAddresses ('2606:4700:4700::1111','2001:4860:4860::8888')\""
+    echo "    → 改完执行 ipconfig /flushdns 清 DNS 缓存，再重跑本脚本"
+  else
+    echo "    → 公共 DNS 也无法解析，可能是网络未连接，请检查网络后重试"
+  fi
+  echo "    （继续启动；若下面链路验证仍失败再排查）"
+fi
+
+echo "==> [3/6] 启动本地后端 (0.0.0.0:8787, wildcard CORS)"
 # 先清理可能残留的旧后端进程（占用 8787）——只匹配 LISTENING，避免 TIME_WAIT 误判
 if netstat -ano 2>/dev/null | grep -E ":8787.*LISTENING" | grep -q .; then
   echo "    检测到 8787 已被占用，先停旧实例..."
@@ -65,7 +95,7 @@ for i in $(seq 1 20); do
   [[ $i -eq 20 ]] && { echo "错误：后端 20s 未就绪，看日志 $BACKEND_LOG"; exit 1; }
 done
 
-echo "==> [3/5] 启动 cloudflared 隧道"
+echo "==> [4/6] 启动 cloudflared 隧道"
 # 清理旧隧道进程（Windows 下 pkill 杀不干净，用 taskkill 按镜像名全停）
 taskkill //IM cloudflared.exe //F >/dev/null 2>&1 || true
 sleep 2
@@ -85,7 +115,7 @@ if [[ -z "$TUNNEL_URL" ]]; then
 fi
 echo "    隧道地址: $TUNNEL_URL"
 
-echo "==> [4/5] 验证隧道 → 后端链路"
+echo "==> [5/6] 验证隧道 → 后端链路"
 HEALTH=""
 for i in $(seq 1 10); do
   # 强制 --http1.1：本机 Git Bash curl 对隧道 IPv6/HTTP2 偶发连不上，HTTP/1.x 稳定
@@ -101,7 +131,7 @@ else
 fi
 
 if [[ "$SYNC" == "yes" ]]; then
-  echo "==> [5/5] 同步隧道地址到前端 index.html + 404.html"
+  echo "==> [6/6] 同步隧道地址到前端 index.html + 404.html"
   # 用 sed 把 __API_BASE__ 行替换成新地址（仅非 localhost 分支里的那行）
   sed -i "s|window\.__API_BASE__ = '[^']*'|window.__API_BASE__ = '$TUNNEL_URL/v1'|" "$FRONTEND_HTML" "$FRONTEND_404"
   echo "    已更新 index.html 和 404.html"
@@ -115,7 +145,7 @@ if [[ "$SYNC" == "yes" ]]; then
   echo "     cd $ROOT && git add frontend/index.html frontend/404.html && git commit -m \"chore: update tunnel\" && git push"
   echo "============================================================"
 else
-  echo "==> [5/5] 已跳过地址同步 (--no-sync)"
+  echo "==> [6/6] 已跳过地址同步 (--no-sync)"
   echo "  隧道地址: $TUNNEL_URL（手动填到 index.html 的 __API_BASE__）"
 fi
 
