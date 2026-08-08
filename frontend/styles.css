@@ -536,7 +536,9 @@ h1, h2, p { margin: 0; }
 .messages {
   min-height: 0;
   overflow: auto;
+  overflow-x: hidden;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 11px;
   padding: 6px 2px;
@@ -745,9 +747,9 @@ h1, h2, p { margin: 0; }
 .active-task-card.failed strong { color: var(--bad); }
 
 /* 消息结构 */
-.message-block { display: grid; justify-items: start; gap: 6px; max-width: 88%; }
+.message-block { display: grid; justify-items: start; gap: 6px; max-width: 88%; min-width: 0; }
 .message-block.user { justify-self: end; justify-items: end; }
-.message-block .bubble { max-width: 100%; }
+.message-block .bubble { max-width: 100%; min-width: 0; }
 .bubble p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .response-label {
   display: inline-flex;
@@ -764,6 +766,7 @@ h1, h2, p { margin: 0; }
 
 .message-card {
   width: 100%;
+  min-width: 0;
   padding: 11px 12px;
   border: 1px solid var(--glass-border);
   border-bottom-color: var(--glass-border-outer);
@@ -787,8 +790,8 @@ h1, h2, p { margin: 0; }
 }
 .message-card header > b { font-size: 10px; }
 .message-card header > strong { margin-left: auto; font-size: 9px; }
-.message-card p { margin-top: 8px; font-size: 11px; line-height: 1.55; white-space: pre-wrap; }
-.message-card > small { display: block; margin-top: 7px; color: var(--muted); font-size: 8px; }
+.message-card p { margin-top: 8px; font-size: 11px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.message-card > small { display: block; margin-top: 7px; color: var(--muted); font-size: 8px; overflow-wrap: anywhere; }
 
 .confirmation-card { border-color: #fde68a; background: rgba(255, 251, 235, .85); }
 .clarification-card { border-color: #bfdbfe; background: rgba(239, 246, 255, .85); }
@@ -1090,12 +1093,12 @@ h1, h2, p { margin: 0; }
   animation: voicePulse 1s ease-in-out infinite;
 }
 .tabs.voice-active .voice-tab .voice-lottie {
-  transform: scale(1.55) translateY(-6px);
+  transform: scale(4) translateY(-8px);
   animation: voiceTabJump .5s ease-in-out infinite;
 }
 @keyframes voiceTabJump {
-  0%, 100% { transform: scale(1.45) translateY(-4px); }
-  50% { transform: scale(1.7) translateY(-10px); }
+  0%, 100% { transform: scale(3.8) translateY(-6px); }
+  50% { transform: scale(4.2) translateY(-16px); }
 }
 
 /* ---- Toast / Modal --------------------------------------------------------- */
@@ -1985,5 +1988,5 @@ h1, h2, p { margin: 0; }
 .realtime-card header span { color: var(--accent); }
 .realtime-card header strong { margin-left: auto; font-size: 11px; color: var(--muted); font-weight: 500; }
 .realtime-card small { display: block; color: var(--muted); margin-top: 4px; }
-.realtime-results { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; }
-.realtime-results a, .realtime-results span { font-size: 12px; color: var(--accent-dark); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.realtime-results { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; min-width: 0; }
+.realtime-results a, .realtime-results span { font-size: 12px; color: var(--accent-dark); text-decoration: none; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
