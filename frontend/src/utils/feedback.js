@@ -28,8 +28,8 @@ export function playClickSound() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const now = audioCtx.currentTime;
 
-    // 噪声瞬态：模拟物理按键的「嗒」敲击感
-    const tickLen = Math.max(1, Math.floor(audioCtx.sampleRate * 0.012));
+    // 噪声瞬态经低通滤波：保留「嗒」的触感，但切掉高频让它不发尖
+    const tickLen = Math.max(1, Math.floor(audioCtx.sampleRate * 0.01));
     const tickBuf = audioCtx.createBuffer(1, tickLen, audioCtx.sampleRate);
     const tickData = tickBuf.getChannelData(0);
     for (let i = 0; i < tickLen; i++) {
@@ -37,27 +37,31 @@ export function playClickSound() {
     }
     const tick = audioCtx.createBufferSource();
     tick.buffer = tickBuf;
+    const tickFilter = audioCtx.createBiquadFilter();
+    tickFilter.type = 'lowpass';
+    tickFilter.frequency.setValueAtTime(700, now);
     const tickGain = audioCtx.createGain();
     tickGain.gain.setValueAtTime(0.0001, now);
-    tickGain.gain.exponentialRampToValueAtTime(0.08, now + 0.002);
-    tickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.012);
-    tick.connect(tickGain);
+    tickGain.gain.exponentialRampToValueAtTime(0.05, now + 0.002);
+    tickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.01);
+    tick.connect(tickFilter);
+    tickFilter.connect(tickGain);
     tickGain.connect(audioCtx.destination);
     tick.start(now);
 
-    // 低频正弦体：柔和温暖的「嗒」底音，替代高频刺耳的三角波
+    // 更低频正弦体：柔和「嘟」底音，听感厚重不尖
     const osc = audioCtx.createOscillator();
     const oscGain = audioCtx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(650, now);
-    osc.frequency.exponentialRampToValueAtTime(420, now + 0.04);
+    osc.frequency.setValueAtTime(500, now);
+    osc.frequency.exponentialRampToValueAtTime(320, now + 0.05);
     oscGain.gain.setValueAtTime(0.0001, now);
-    oscGain.gain.exponentialRampToValueAtTime(0.12, now + 0.005);
-    oscGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+    oscGain.gain.exponentialRampToValueAtTime(0.1, now + 0.006);
+    oscGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
     osc.connect(oscGain);
     oscGain.connect(audioCtx.destination);
     osc.start(now);
-    osc.stop(now + 0.055);
+    osc.stop(now + 0.075);
     return true;
   } catch {
     return false;

@@ -74,6 +74,10 @@ function makeMockAudioContextClass() {
       this.tick = { buffer: null, connect() {}, start() {} };
       return this.tick;
     }
+    createBiquadFilter() {
+      this.filter = { type: '', frequency: { setValueAtTime() {} }, connect() {} };
+      return this.filter;
+    }
     resume() {}
     static all() {
       return instances;
