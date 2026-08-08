@@ -15,7 +15,8 @@ const state = {
   connection: { status: 'disconnected', mode: 'ui_mock' },
   activeTask: null,
   isStreaming: false,
-  profile: { name: '测试用户', home: '测试家庭', reminder: '开启', avatar: '', city: '杭州' }
+  profile: { name: '测试用户', home: '测试家庭', reminder: '开启', avatar: '', city: '杭州' },
+  settings: { sound: true, vibrate: true }
 };
 
 test('四页面均显示后端断开边界，快捷场景不映射后端任务', () => {

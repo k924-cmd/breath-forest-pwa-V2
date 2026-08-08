@@ -1,26 +1,27 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260807-10';
-import { icon } from './components/icons.js?v=20260807-10';
-import { homePage } from './pages/home.js?v=20260807-10';
-import { devicesPage } from './pages/devices.js?v=20260807-10';
-import { chatPage } from './pages/chat.js?v=20260807-10';
-import { profilePage } from './pages/profile.js?v=20260807-10';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260807-10';
-import { loginPage } from './components/login.js?v=20260807-10';
-import { login, isLoggedIn } from './auth/auth.js?v=20260807-10';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260807-10';
-import { fetchWeather } from './services/weather-service.js?v=20260807-10';
-import { toggleMockDevice } from './services/device-service.js?v=20260807-10';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260807-10';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260807-10';
-import { escapeHtml } from './utils/html.js?v=20260807-10';
-import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260807-10';
-import { transcribeAudio } from './services/asr-service.js?v=20260807-10';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260807-10';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-1';
+import { icon } from './components/icons.js?v=20260808-1';
+import { homePage } from './pages/home.js?v=20260808-1';
+import { devicesPage } from './pages/devices.js?v=20260808-1';
+import { chatPage } from './pages/chat.js?v=20260808-1';
+import { profilePage } from './pages/profile.js?v=20260808-1';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-1';
+import { loginPage } from './components/login.js?v=20260808-1';
+import { login, isLoggedIn } from './auth/auth.js?v=20260808-1';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-1';
+import { fetchWeather } from './services/weather-service.js?v=20260808-1';
+import { toggleMockDevice } from './services/device-service.js?v=20260808-1';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-1';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-1';
+import { escapeHtml } from './utils/html.js?v=20260808-1';
+import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-1';
+import { initFeedback } from './utils/feedback.js?v=20260808-1';
+import { transcribeAudio } from './services/asr-service.js?v=20260808-1';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-1';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260807-10';
+} from './presentation.js?v=20260808-1';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
@@ -34,6 +35,9 @@ let pressStartX = 0;
 let pressStartY = 0;
 const LONG_PRESS_MS = 500;
 const PRESS_MOVE_TOLERANCE = 10;
+
+// 全局按键反馈：事件委托，幂等，设置实时从 state.settings 读取
+initFeedback(() => state.settings);
 
 function tabs() {
   const devicesEntry = state.tab === 'home' ? '<button class="tabs-devices" data-tab="devices">全部设备 <small>›</small></button>' : '';
@@ -567,6 +571,15 @@ function bind() {
   });
   document.querySelectorAll('[data-action="profile"]').forEach(button => {
     button.onclick = () => { document.querySelector('#modal-root').innerHTML = profileModal(); bindModal(); };
+  });
+  document.querySelectorAll('[data-action="toggle-feedback"]').forEach(input => {
+    input.onchange = () => {
+      const key = input.dataset.feedbackKey;
+      if (key === 'sound' || key === 'vibrate') {
+        state.settings[key] = input.checked;
+        saveState();
+      }
+    };
   });
   [['home-detail', 'home'], ['notice-detail', 'notice'], ['energy-detail', 'energy'], ['about-detail', 'about']].forEach(([action, kind]) => {
     document.querySelectorAll(`[data-action="${action}"]`).forEach(button => {

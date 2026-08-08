@@ -1,4 +1,4 @@
-import { createMockDevices } from '../mocks/devices.js?v=20260807-10';
+import { createMockDevices } from '../mocks/devices.js?v=20260808-1';
 
 export const STORAGE_KEY = 'breathForestUiV2';
 
@@ -49,6 +49,10 @@ export const state = {
     reminder: stored.profile?.reminder === '关闭' ? '关闭' : '开启',
     avatar: stored.profile?.avatar || ''
   },
+  settings: {
+    sound: stored.settings?.sound !== false,
+    vibrate: stored.settings?.vibrate !== false
+  },
   logs: Array.isArray(stored.logs) ? stored.logs.slice(0, 100) : [
     { time: '10:00', type: 'ai', text: 'UI Mock 已准备就绪。' },
     { time: '09:25', type: 'manual', text: '当前所有设备操作仅保存在本地。' }
@@ -76,6 +80,7 @@ export function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     deviceView: state.deviceView,
     profile: state.profile,
-    logs: state.logs
+    logs: state.logs,
+    settings: state.settings
   }));
 }

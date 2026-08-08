@@ -940,6 +940,18 @@ h1, h2, p { margin: 0; }
 .setting-list button:last-child { border-bottom: 0; }
 .setting-list svg { width: 18px; color: var(--accent); }
 .setting-list svg:last-child { margin-left: auto; width: 14px; color: var(--muted); }
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 11px;
+  padding: 15px;
+  border-bottom: 1px solid rgba(148, 163, 184, .25);
+  color: var(--ink);
+  font-size: 13px;
+}
+.setting-row:last-child { border-bottom: 0; }
+.setting-row > span:first-child { display: flex; align-items: center; gap: 11px; }
 
 /* ---- 底部导航卡：浮动圆角卡 + "全部设备"入口行 --------------------------------- */
 .tabs {
