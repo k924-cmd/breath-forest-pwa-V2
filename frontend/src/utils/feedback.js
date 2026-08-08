@@ -27,18 +27,37 @@ export function playClickSound() {
     if (!audioCtx) audioCtx = new AC();
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const now = audioCtx.currentTime;
+
+    // 噪声瞬态：模拟物理按键的「嗒」敲击感
+    const tickLen = Math.max(1, Math.floor(audioCtx.sampleRate * 0.012));
+    const tickBuf = audioCtx.createBuffer(1, tickLen, audioCtx.sampleRate);
+    const tickData = tickBuf.getChannelData(0);
+    for (let i = 0; i < tickLen; i++) {
+      tickData[i] = (Math.random() * 2 - 1) * (1 - i / tickLen);
+    }
+    const tick = audioCtx.createBufferSource();
+    tick.buffer = tickBuf;
+    const tickGain = audioCtx.createGain();
+    tickGain.gain.setValueAtTime(0.0001, now);
+    tickGain.gain.exponentialRampToValueAtTime(0.08, now + 0.002);
+    tickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.012);
+    tick.connect(tickGain);
+    tickGain.connect(audioCtx.destination);
+    tick.start(now);
+
+    // 低频正弦体：柔和温暖的「嗒」底音，替代高频刺耳的三角波
     const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(1900, now);
-    osc.frequency.exponentialRampToValueAtTime(1300, now + 0.04);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.22, now + 0.005);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    const oscGain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(650, now);
+    osc.frequency.exponentialRampToValueAtTime(420, now + 0.04);
+    oscGain.gain.setValueAtTime(0.0001, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.12, now + 0.005);
+    oscGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+    osc.connect(oscGain);
+    oscGain.connect(audioCtx.destination);
     osc.start(now);
-    osc.stop(now + 0.07);
+    osc.stop(now + 0.055);
     return true;
   } catch {
     return false;

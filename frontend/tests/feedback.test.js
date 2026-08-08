@@ -66,6 +66,14 @@ function makeMockAudioContextClass() {
     createGain() {
       return { gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} };
     }
+    createBuffer(channels, length, sampleRate) {
+      this.tickBuf = { length, sampleRate, getChannelData: () => new Float32Array(length) };
+      return this.tickBuf;
+    }
+    createBufferSource() {
+      this.tick = { buffer: null, connect() {}, start() {} };
+      return this.tick;
+    }
     resume() {}
     static all() {
       return instances;
