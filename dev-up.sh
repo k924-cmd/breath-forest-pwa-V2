@@ -89,7 +89,8 @@ echo "==> [4/5] 验证隧道 → 后端链路"
 HEALTH=""
 for i in $(seq 1 10); do
   # 强制 --http1.1：本机 Git Bash curl 对隧道 IPv6/HTTP2 偶发连不上，HTTP/1.x 稳定
-  HEALTH=$(curl --http1.1 -s -m 10 "$TUNNEL_URL/v1/health" 2>&1 || true)
+  # --ssl-no-revoke：Windows schannel 在线检查 CRL 时若 DNS/网络被干扰会报 CRYPT_E_REVOCATION_OFFLINE，跳过吊销检查
+  HEALTH=$(curl --http1.1 -s -m 10 --ssl-no-revoke "$TUNNEL_URL/v1/health" 2>&1 || true)
   [[ "$HEALTH" == *'"status":"ok"'* ]] && break
   sleep 2
 done
