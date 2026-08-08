@@ -1,27 +1,29 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-4';
-import { icon } from './components/icons.js?v=20260808-4';
-import { homePage } from './pages/home.js?v=20260808-4';
-import { devicesPage } from './pages/devices.js?v=20260808-4';
-import { chatPage } from './pages/chat.js?v=20260808-4';
-import { profilePage } from './pages/profile.js?v=20260808-4';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-4';
-import { loginPage } from './components/login.js?v=20260808-4';
-import { login, isLoggedIn } from './auth/auth.js?v=20260808-4';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-4';
-import { fetchWeather } from './services/weather-service.js?v=20260808-4';
-import { toggleMockDevice } from './services/device-service.js?v=20260808-4';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-4';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-4';
-import { escapeHtml } from './utils/html.js?v=20260808-4';
-import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-4';
-import { initFeedback } from './utils/feedback.js?v=20260808-4';
-import { transcribeAudio } from './services/asr-service.js?v=20260808-4';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-4';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-5';
+import { icon } from './components/icons.js?v=20260808-5';
+import { homePage } from './pages/home.js?v=20260808-5';
+import { devicesPage } from './pages/devices.js?v=20260808-5';
+import { chatPage } from './pages/chat.js?v=20260808-5';
+import { profilePage } from './pages/profile.js?v=20260808-5';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-5';
+import { loginPage } from './components/login.js?v=20260808-5';
+import { login, isLoggedIn } from './auth/auth.js?v=20260808-5';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-5';
+import { fetchWeather } from './services/weather-service.js?v=20260808-5';
+import { toggleMockDevice } from './services/device-service.js?v=20260808-5';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-5';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-5';
+import { escapeHtml } from './utils/html.js?v=20260808-5';
+import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-5';
+import { initFeedback } from './utils/feedback.js?v=20260808-5';
+import { transcribeAudio } from './services/asr-service.js?v=20260808-5';
+import { runSingingEasterEgg } from './services/easter-service.js?v=20260808-5';
+import { playBase64Audio } from './utils/play-audio.js?v=20260808-5';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-5';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260808-4';
+} from './presentation.js?v=20260808-5';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
@@ -434,7 +436,7 @@ function setStreamingUi(isStreaming) {
   if (submit) submit.disabled = isStreaming;
 }
 
-async function sendMessage(text, continuation) {
+async function sendMessage(text, continuation, options = {}) {
   if (state.isStreaming || selectionMode) return;
   const clientMessageId = crypto.randomUUID?.() || `client-message-${Date.now()}-${Math.random()}`;
   addMessage('user', text, { continuation, id: clientMessageId });
@@ -446,6 +448,24 @@ async function sendMessage(text, continuation) {
   bind();
   scrollChat(true);
   try {
+    // 唱歌彩蛋：语音/文字发送都先尝试一次；识别为唱歌则展示歌词回复并播放演唱。
+    if (options.tryEasterEgg) {
+      const easter = await runSingingEasterEgg(text);
+      if (easter.available === true) {
+        pending.status = 'complete';
+        pending.responseType = 'chat';
+        pending.content = easter.replyText;
+        pending.sourceMode = 'backend';
+        pending.sources = [{ type: 'tts', observedAt: new Date().toISOString(), referenceId: easter.voice || 'mimo' }];
+        pending.audio = { base64: easter.audioBase64, format: easter.format, songName: easter.songName, continuation: easter.continuation };
+        renderMessages();
+        bind();
+        scrollChat(true);
+        saveState();
+        if (easter.audioBase64) playBase64Audio(easter.audioBase64, easter.format);
+        return;
+      }
+    }
     const response = await sendConversationMessage(text, { continuation, city: state.profile?.city || '', clientMessageId });
     if (response.transportMode === 'ui_mock') {
       await useUiMockSnapshot();
@@ -611,7 +631,7 @@ function bind() {
     const input = document.querySelector('#chat-input');
     const text = input.value.trim();
     if (text) {
-      sendMessage(text);
+      sendMessage(text, undefined, { tryEasterEgg: true });
       input.value = '';
     }
   });
@@ -905,7 +925,7 @@ function bindVoiceConfirmActions() {
         state.tab = 'chat';
         render();
       }
-      sendMessage(text);
+      sendMessage(text, undefined, { tryEasterEgg: true });
     };
   });
   document.querySelectorAll('.voice-confirm-modal [data-action="close"]').forEach(button => {

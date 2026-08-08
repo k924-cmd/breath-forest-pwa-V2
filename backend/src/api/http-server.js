@@ -91,6 +91,30 @@ export function createHttpAssistantServer(options = {}) {
         }
         throw new HttpTransportError(503, "SERVICE_UNAVAILABLE", "语音识别服务暂不可用，请稍后再试。", true);
       }
+      if (pathname === "/v1/tts/easter-egg") {
+        requireMethod(request, "POST");
+        requireJsonContentType(request);
+        const body = await readJsonBody(request, maxBodyBytes);
+        validateEasterEggBody(body);
+        const result = await assistant.runEasterEgg(body.text);
+        if (result?.available === true) {
+          if (!timedOut && !response.writableEnded) {
+            writeJson(response, 200, {
+              available: true,
+              songName: result.songName,
+              continuation: result.continuation,
+              replyText: result.replyText,
+              audio: Buffer.from(result.audio).toString("base64"),
+              format: result.format,
+              voice: result.voice,
+            }, corsHeaders);
+          }
+          return;
+        }
+        // 非唱歌或编排失败：返回 200 + available:false，前端退回普通对话。
+        if (!timedOut && !response.writableEnded) writeJson(response, 200, { available: false, reason: result?.reason ?? "not_singing" }, corsHeaders);
+        return;
+      }
       if (pathname === "/v1/conversations/messages") {
         requireMethod(request, "POST");
         requireJsonContentType(request);
@@ -294,6 +318,12 @@ function validateDeleteMessagesBody(value) {
   if (!Array.isArray(value.messageIds) || value.messageIds.some((id) => typeof id !== "string" || !id)) {
     throw new HttpTransportError(400, "INVALID_REQUEST", "messageIds 必须是字符串数组。");
   }
+}
+
+function validateEasterEggBody(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new HttpTransportError(400, "INVALID_REQUEST", "彩蛋请求格式无效。");
+  if (Object.keys(value).some((key) => key !== "text")) throw new HttpTransportError(400, "INVALID_REQUEST", "彩蛋请求包含未定义字段。");
+  if (typeof value.text !== "string" || !value.text.trim()) throw new HttpTransportError(400, "INVALID_REQUEST", "text 必须是非空字符串。");
 }
 
 function normalizeHttpError(error) {

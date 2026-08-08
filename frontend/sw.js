@@ -1,11 +1,11 @@
-const CACHE_NAME = 'breath-forest-ui-v29';
+const CACHE_NAME = 'breath-forest-ui-v30';
 const CORE_ASSETS = [
-  './', './index.html', './styles.css?v=20260808-4', './manifest.webmanifest', './src/main.js?v=20260808-4',
-  './src/app/state.js?v=20260808-4', './src/components/icons.js?v=20260808-4', './src/components/message-cards.js?v=20260808-4', './src/presentation.js?v=20260808-4', './src/utils/html.js?v=20260808-4',
-  './src/pages/home.js?v=20260808-4', './src/pages/devices.js?v=20260808-4', './src/pages/chat.js?v=20260808-4', './src/pages/profile.js?v=20260808-4',
-  './src/services/conversation-service.js?v=20260808-4', './src/services/device-service.js?v=20260808-4', './src/services/environment-service.js?v=20260808-4',
-  './src/services/asr-service.js?v=20260808-4', './src/utils/audio.js?v=20260808-4', './src/utils/feedback.js?v=20260808-4',
-  './src/mocks/conversation.js?v=20260808-4', './src/mocks/devices.js?v=20260808-4', './src/mocks/environment.js?v=20260808-4',
+  './', './index.html', './styles.css?v=20260808-5', './manifest.webmanifest', './src/main.js?v=20260808-5',
+  './src/app/state.js?v=20260808-5', './src/components/icons.js?v=20260808-5', './src/components/message-cards.js?v=20260808-5', './src/presentation.js?v=20260808-5', './src/utils/html.js?v=20260808-5',
+  './src/pages/home.js?v=20260808-5', './src/pages/devices.js?v=20260808-5', './src/pages/chat.js?v=20260808-5', './src/pages/profile.js?v=20260808-5',
+  './src/services/conversation-service.js?v=20260808-5', './src/services/device-service.js?v=20260808-5', './src/services/environment-service.js?v=20260808-5',
+  './src/services/asr-service.js?v=20260808-5', './src/services/easter-service.js?v=20260808-5', './src/utils/audio.js?v=20260808-5', './src/utils/feedback.js?v=20260808-5', './src/utils/play-audio.js?v=20260808-5',
+  './src/mocks/conversation.js?v=20260808-5', './src/mocks/devices.js?v=20260808-5', './src/mocks/environment.js?v=20260808-5',
   './vendor/lottie-web.js', './assets/robot.json', './assets/start-robot.json', './assets/ai-flow.json',
   './icons/app-512.png', './icons/app-192.png', './icons/apple-icon.png',
   './assets/breath-forest-living-room.webp',

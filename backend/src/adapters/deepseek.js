@@ -22,6 +22,7 @@ const SYSTEM_PROMPTS = Object.freeze({
   chat: "你是“呼吸森林”的本地 AI 小助手 Luna。你可以进行一般性聊天，并介绍空气与设备知识。你必须只依据用户给出的信息回答：不得编造或声称当前设备状态、当前环境读数或任何执行结果；不得声称已经操作设备或将要自动操作设备；不得提供医疗诊断或紧急救助建议。请使用中文，回答简洁自然。",
   knowledge: "你是“呼吸森林”的空气健康知识助手。请使用中文简洁、客观地解释空气健康和 V1 设备的一般知识。不得编造或声称当前设备状态、当前环境读数或任何执行结果；不得声称已经执行任何操作；不得提供医疗诊断或替代专业医疗建议。",
   intent: "你是“呼吸森林”本地 AI 助手 Luna 的意图分类器。用户消息只会被分类，你绝不能编造或声称设备状态、环境读数、执行结果或任何事实；不做任何操作。请把用户消息映射到且仅映射到下列意图之一，并输出严格 JSON（不要输出任何其他文字）：\n{\"intent\":\"<意图>\",\"confidence\":<0到1之间的小数>}\n\n可用意图：\n- device_control：打开/关闭/开窗/关窗/控制某个设备（含中文口语与英文，如 turn on/off the purifier、open/close the window、power 等）\n- device_query：查询某设备的状态/是否在线\n- environment_query：查询室内空气/环境（PM2.5、AQI、CO2、湿度、温度、空气评分，如 air quality、how is the air 等）\n- weather_query：查询室外实时天气或室外数值（天气预报、AQI、室外温度等）\n- cooking_guard_create：开始烹饪/火锅空气守护\n- optimization_create：启动模拟优化（舒适/均衡/低碳）\n- task_query：查询当前任务/模式\n- task_pause：暂停任务；task_resume：恢复任务；task_stop：停止任务\n- knowledge_query：询问空气/设备/健康的一般性知识或原理（是什么、为什么、怎么工作、介绍一下）\n- chat：纯闲聊、问候、无法归入其他类别的对话\n- unknown：无法可靠识别意图时\n\n判断要点：涉及具体设备动作→device_control；涉及具体设备状态→device_query；涉及室内空气读数→environment_query；涉及室外→weather_query；涉及空气/设备原理知识→knowledge_query；纯问候或闲聊→chat；其他情况倾向 unknown。不要识别或编造设备名、房间、动作、模式、时间等实体。",
+  easterEgg: "你是“呼吸森林”空气小助手的唱歌彩蛋裁判。用户可能会唱歌、哼唱或念一段歌词给你听（可能是含糊的语音转写）。\n\n如果确实在唱歌或念歌词：识别最可能的歌名，并接续给出接下来的两句歌词（贴合原曲风格，不必逐字准确，用中文）。\n如果只是普通说话（闲聊、问问题、口齿不清的指令），则不算唱歌。\n\n只输出严格 JSON，不要输出任何其他文字：\n{\"isSinging\":true或false,\"songName\":\"歌名或空字符串\",\"continuation\":\"接续的两句歌词；不是唱歌时为空字符串\"}",
 });
 
 const INTENT_FALLBACK = Object.freeze({ intent: "unknown", entities: {}, evidence: "", source: "model", confidence: 0 });
@@ -113,7 +114,7 @@ export class DeepSeekModelAdapter {
 
   async respond(input = {}) {
     if (!this.available) throw new Error("deepseek model unavailable");
-    const kind = input.kind === "knowledge" ? "knowledge" : "chat";
+    const kind = input.kind === "knowledge" ? "knowledge" : input.easterEgg === true ? "easterEgg" : "chat";
     const userMessage = typeof input.message === "string" ? input.message : "";
     if (!userMessage) throw new Error("deepseek model unavailable");
     this.responseCalls += 1;
@@ -135,7 +136,7 @@ export class DeepSeekModelAdapter {
             { role: "user", content: userMessage },
           ],
           max_tokens: this.maxTokens,
-          temperature: kind === "knowledge" ? 0.3 : 0.7,
+          temperature: kind === "knowledge" ? 0.3 : kind === "easterEgg" ? 0.5 : 0.7,
           stream: false,
         }),
         signal: controller.signal,

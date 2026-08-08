@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-const LOADED_PREFIXES = ["DEEPSEEK_", "TAVILY_", "DASHSCOPE_"];
+const LOADED_PREFIXES = ["DEEPSEEK_", "TAVILY_", "DASHSCOPE_", "MIMO_"];
 
 /**
  * Minimal local .env loader. Only whitelisted prefixes are loaded, existing
