@@ -995,17 +995,20 @@ h1, h2, p { margin: 0; }
 }
 .tabs-grid {
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2px;
 }
 .tab {
   border: 0;
   background: none;
-  min-width: 66px;
+  flex: 1;
+  min-width: 44px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   color: #94a3b8;
   font-size: 10px;
   position: relative;
@@ -1013,7 +1016,7 @@ h1, h2, p { margin: 0; }
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-.tab svg { width: 25px; height: 25px; }
+.tab svg { width: 22px; height: 22px; }
 .tab.active { color: var(--accent); }
 .tab.active svg { filter: drop-shadow(0 3px 4px rgba(37, 99, 235, .25)); }
 .tab.active:before {
@@ -1032,13 +1035,14 @@ h1, h2, p { margin: 0; }
 
 /* 语音快捷入口：长按录音（图标为气泡 Lottie 动画） */
 .voice-tab {
-  min-width: 58px;
-  height: 54px;
+  flex: 1.35;
+  min-width: 56px;
+  height: 58px;
   justify-content: center;
 }
 .voice-tab .voice-lottie {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   pointer-events: none;
   transition: transform .18s ease;
   transform-origin: 50% 50%;
@@ -1070,6 +1074,28 @@ h1, h2, p { margin: 0; }
 @keyframes voiceLottiePulse {
   0%, 100% { transform: scale(1.25); }
   50% { transform: scale(1.4); }
+}
+
+/* 长按录音反馈：导航浮起到弹窗之上，Lottie 跳出放大波动，其余 tab 淡出 */
+.tabs.voice-active {
+  z-index: 80;
+}
+.tabs.voice-active .tab:not(.voice-tab) {
+  opacity: .3;
+  pointer-events: none;
+}
+.tabs.voice-active .voice-tab .voice-ripple {
+  opacity: 1;
+  background: rgba(37, 99, 235, .35);
+  animation: voicePulse 1s ease-in-out infinite;
+}
+.tabs.voice-active .voice-tab .voice-lottie {
+  transform: scale(1.55) translateY(-6px);
+  animation: voiceTabJump .5s ease-in-out infinite;
+}
+@keyframes voiceTabJump {
+  0%, 100% { transform: scale(1.45) translateY(-4px); }
+  50% { transform: scale(1.7) translateY(-10px); }
 }
 
 /* ---- Toast / Modal --------------------------------------------------------- */

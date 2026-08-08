@@ -1,27 +1,27 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-1';
-import { icon } from './components/icons.js?v=20260808-1';
-import { homePage } from './pages/home.js?v=20260808-1';
-import { devicesPage } from './pages/devices.js?v=20260808-1';
-import { chatPage } from './pages/chat.js?v=20260808-1';
-import { profilePage } from './pages/profile.js?v=20260808-1';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-1';
-import { loginPage } from './components/login.js?v=20260808-1';
-import { login, isLoggedIn } from './auth/auth.js?v=20260808-1';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-1';
-import { fetchWeather } from './services/weather-service.js?v=20260808-1';
-import { toggleMockDevice } from './services/device-service.js?v=20260808-1';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-1';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-1';
-import { escapeHtml } from './utils/html.js?v=20260808-1';
-import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-1';
-import { initFeedback } from './utils/feedback.js?v=20260808-1';
-import { transcribeAudio } from './services/asr-service.js?v=20260808-1';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-1';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-2';
+import { icon } from './components/icons.js?v=20260808-2';
+import { homePage } from './pages/home.js?v=20260808-2';
+import { devicesPage } from './pages/devices.js?v=20260808-2';
+import { chatPage } from './pages/chat.js?v=20260808-2';
+import { profilePage } from './pages/profile.js?v=20260808-2';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-2';
+import { loginPage } from './components/login.js?v=20260808-2';
+import { login, isLoggedIn } from './auth/auth.js?v=20260808-2';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-2';
+import { fetchWeather } from './services/weather-service.js?v=20260808-2';
+import { toggleMockDevice } from './services/device-service.js?v=20260808-2';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-2';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-2';
+import { escapeHtml } from './utils/html.js?v=20260808-2';
+import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-2';
+import { initFeedback } from './utils/feedback.js?v=20260808-2';
+import { transcribeAudio } from './services/asr-service.js?v=20260808-2';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-2';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260808-1';
+} from './presentation.js?v=20260808-2';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
@@ -701,6 +701,9 @@ function bindVoiceButton(button) {
   let recordingStarted = false;
   let recorder = null;
   let stopTimer = null;
+  const nav = button.closest('.tabs');
+
+  const setVoiceActive = active => nav && nav.classList.toggle('voice-active', active);
 
   const start = async (event) => {
     if (event.cancelable) event.preventDefault();
@@ -710,6 +713,7 @@ function bindVoiceButton(button) {
     pressTimer = setTimeout(async () => {
       longPressTriggered = true;
       button.classList.add('recording');
+      setVoiceActive(true);
       // 长按一开始立即弹出录音中弹窗，给用户即时反馈
       const modalId = showVoiceConfirmModal(null, 'recording');
       recorder = new AudioRecorder();
@@ -722,6 +726,7 @@ function bindVoiceButton(button) {
         stopTimer = setTimeout(() => finishRecording(), MAX_RECORD_MS);
       } catch (error) {
         button.classList.remove('recording');
+        setVoiceActive(false);
         // 权限被拒等：关闭录音中弹窗并提示
         const modalRoot = document.querySelector('#modal-root');
         if (modalRoot && modalRoot.innerHTML) modalRoot.innerHTML = '';
@@ -732,6 +737,7 @@ function bindVoiceButton(button) {
 
   const finishRecording = async () => {
     button.classList.remove('recording');
+    setVoiceActive(false);
     if (stopTimer) { clearTimeout(stopTimer); stopTimer = null; }
     if (!recorder) return;
     const { blob, mimeType, error } = await recorder.stop();
@@ -757,6 +763,10 @@ function bindVoiceButton(button) {
     clearTimeout(pressTimer);
     if (longPressTriggered && recordingStarted) {
       finishRecording();
+    } else if (longPressTriggered) {
+      // 长按已触发但录音未启动（如权限流程中松手）：清理语音反馈态
+      button.classList.remove('recording');
+      setVoiceActive(false);
     }
     longPressTriggered = false;
   };
