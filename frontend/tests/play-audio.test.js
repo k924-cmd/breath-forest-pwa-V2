@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mimeTypeForFormat, playBase64Audio } from '../src/utils/play-audio.js';
+import { mimeTypeForFormat, playBase64Audio, unlockAudio } from '../src/utils/play-audio.js';
 
 test('mimeTypeForFormat 映射已知与未知格式', () => {
   assert.equal(mimeTypeForFormat('wav'), 'audio/wav');
@@ -31,5 +31,16 @@ test('playBase64Audio 空 base64 时安全降级', async () => {
   } finally {
     if (original) globalThis.AudioContext = original;
     else delete globalThis.AudioContext;
+  }
+});
+
+test('unlockAudio 无 AudioContext 时返回 false', () => {
+  const original = globalThis.AudioContext;
+  delete globalThis.AudioContext;
+  delete globalThis.webkitAudioContext;
+  try {
+    assert.equal(unlockAudio(), false);
+  } finally {
+    if (original) globalThis.AudioContext = original;
   }
 });

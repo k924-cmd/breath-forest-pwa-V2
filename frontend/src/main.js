@@ -1,29 +1,29 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-6';
-import { icon } from './components/icons.js?v=20260808-6';
-import { homePage } from './pages/home.js?v=20260808-6';
-import { devicesPage } from './pages/devices.js?v=20260808-6';
-import { chatPage } from './pages/chat.js?v=20260808-6';
-import { profilePage } from './pages/profile.js?v=20260808-6';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-6';
-import { loginPage } from './components/login.js?v=20260808-6';
-import { login, isLoggedIn } from './auth/auth.js?v=20260808-6';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-6';
-import { fetchWeather } from './services/weather-service.js?v=20260808-6';
-import { toggleMockDevice } from './services/device-service.js?v=20260808-6';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-6';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-6';
-import { escapeHtml } from './utils/html.js?v=20260808-6';
-import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-6';
-import { initFeedback } from './utils/feedback.js?v=20260808-6';
-import { transcribeAudio } from './services/asr-service.js?v=20260808-6';
-import { runSingingEasterEgg } from './services/easter-service.js?v=20260808-6';
-import { playBase64Audio } from './utils/play-audio.js?v=20260808-6';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-6';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-7';
+import { icon } from './components/icons.js?v=20260808-7';
+import { homePage } from './pages/home.js?v=20260808-7';
+import { devicesPage } from './pages/devices.js?v=20260808-7';
+import { chatPage } from './pages/chat.js?v=20260808-7';
+import { profilePage } from './pages/profile.js?v=20260808-7';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-7';
+import { loginPage } from './components/login.js?v=20260808-7';
+import { login, isLoggedIn } from './auth/auth.js?v=20260808-7';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-7';
+import { fetchWeather } from './services/weather-service.js?v=20260808-7';
+import { toggleMockDevice } from './services/device-service.js?v=20260808-7';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-7';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-7';
+import { escapeHtml } from './utils/html.js?v=20260808-7';
+import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-7';
+import { initFeedback } from './utils/feedback.js?v=20260808-7';
+import { transcribeAudio } from './services/asr-service.js?v=20260808-7';
+import { runSingingEasterEgg } from './services/easter-service.js?v=20260808-7';
+import { playBase64Audio, unlockAudio } from './utils/play-audio.js?v=20260808-7';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-7';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260808-6';
+} from './presentation.js?v=20260808-7';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
@@ -463,8 +463,9 @@ async function sendMessage(text, continuation, options = {}) {
         scrollChat(true);
         saveState();
         if (easter.audioBase64) {
-          toast('Luna 努力演唱中，跑调勿怪～');
-          playBase64Audio(easter.audioBase64, easter.format);
+          const played = await playBase64Audio(easter.audioBase64, easter.format);
+          if (played) toast('Luna 努力演唱中，跑调勿怪～');
+          else toast('演唱已生成，但当前浏览器无法自动播放');
         }
         return;
       }
@@ -634,6 +635,8 @@ function bind() {
     const input = document.querySelector('#chat-input');
     const text = input.value.trim();
     if (text) {
+      // 提交是用户手势：解锁 AudioContext，彩蛋音频稍后返回时可自动播放
+      unlockAudio();
       sendMessage(text, undefined, { tryEasterEgg: true });
       input.value = '';
     }
@@ -928,6 +931,8 @@ function bindVoiceConfirmActions() {
         state.tab = 'chat';
         render();
       }
+      // 用户点击"发送"是可靠手势：先解锁 AudioContext，彩蛋音频稍后返回时才能自动播放
+      unlockAudio();
       sendMessage(text, undefined, { tryEasterEgg: true });
     };
   });
