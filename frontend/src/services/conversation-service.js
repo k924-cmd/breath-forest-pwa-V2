@@ -1,4 +1,4 @@
-import { getMockReply } from '../mocks/conversation.js?v=20260808-9';
+import { getMockReply } from '../mocks/conversation.js?v=20260808-10';
 import {
   getApiBaseUrl,
   getApiKeyHeader,
@@ -7,10 +7,10 @@ import {
   CONTRACT_VERSION,
   ADMIN_SESSION_KEY,
   CONVERSATION_STORAGE_KEY,
-} from '../config.js?v=20260808-9';
+} from '../config.js?v=20260808-10';
 
 export { getApiBaseUrl, getApiKeyHeader, getAuthHeader, getSessionToken, CONTRACT_VERSION, ADMIN_SESSION_KEY, CONVERSATION_STORAGE_KEY };
-const REQUEST_TIMEOUT_MS = 5000;
+const REQUEST_TIMEOUT_MS = 15000;
 
 function createId(prefix) {
   const value = globalThis.crypto?.randomUUID?.()

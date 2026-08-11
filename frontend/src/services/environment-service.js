@@ -1,4 +1,4 @@
-import { MOCK_ENVIRONMENT } from '../mocks/environment.js?v=20260808-9';
+import { MOCK_ENVIRONMENT } from '../mocks/environment.js?v=20260808-10';
 
 export async function getEnvironmentSnapshot() {
   return { ...MOCK_ENVIRONMENT, source: 'mock', freshness: 'fresh', observedAt: new Date().toISOString(), uiMockOnly: true };

@@ -1,29 +1,29 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-9';
-import { icon } from './components/icons.js?v=20260808-9';
-import { homePage } from './pages/home.js?v=20260808-9';
-import { devicesPage } from './pages/devices.js?v=20260808-9';
-import { chatPage } from './pages/chat.js?v=20260808-9';
-import { profilePage } from './pages/profile.js?v=20260808-9';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-9';
-import { loginPage } from './components/login.js?v=20260808-9';
-import { login, isLoggedIn } from './auth/auth.js?v=20260808-9';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-9';
-import { fetchWeather } from './services/weather-service.js?v=20260808-9';
-import { toggleMockDevice } from './services/device-service.js?v=20260808-9';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-9';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-9';
-import { escapeHtml } from './utils/html.js?v=20260808-9';
-import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-9';
-import { initFeedback } from './utils/feedback.js?v=20260808-9';
-import { transcribeAudio } from './services/asr-service.js?v=20260808-9';
-import { runSingingEasterEgg } from './services/easter-service.js?v=20260808-9';
-import { playBase64Audio, unlockAudio } from './utils/play-audio.js?v=20260808-9';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-9';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-10';
+import { icon } from './components/icons.js?v=20260808-10';
+import { homePage } from './pages/home.js?v=20260808-10';
+import { devicesPage } from './pages/devices.js?v=20260808-10';
+import { chatPage } from './pages/chat.js?v=20260808-10';
+import { profilePage } from './pages/profile.js?v=20260808-10';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-10';
+import { loginPage } from './components/login.js?v=20260808-10';
+import { login, isLoggedIn } from './auth/auth.js?v=20260808-10';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-10';
+import { fetchWeather } from './services/weather-service.js?v=20260808-10';
+import { toggleMockDevice } from './services/device-service.js?v=20260808-10';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-10';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-10';
+import { escapeHtml } from './utils/html.js?v=20260808-10';
+import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-10';
+import { initFeedback } from './utils/feedback.js?v=20260808-10';
+import { transcribeAudio } from './services/asr-service.js?v=20260808-10';
+import { runSingingEasterEgg } from './services/easter-service.js?v=20260808-10';
+import { playBase64Audio, unlockAudio } from './utils/play-audio.js?v=20260808-10';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-10';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260808-9';
+} from './presentation.js?v=20260808-10';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
