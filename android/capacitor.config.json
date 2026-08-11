@@ -1,0 +1,10 @@
+{
+  "appId": "io.forest.breath",
+  "appName": "呼吸森林",
+  "webDir": "app/dist",
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#F5FAF8",
+    "includePlugins": ["CapacitorApp"]
+  }
+}

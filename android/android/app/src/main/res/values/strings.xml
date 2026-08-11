@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">呼吸森林</string>
+    <string name="title_activity_main">呼吸森林</string>
+    <string name="package_name">io.forest.breath</string>
+    <string name="custom_url_scheme">io.forest.breath</string>
+</resources>

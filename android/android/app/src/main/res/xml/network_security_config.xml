@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 部署后只允许 HTTPS 访问后端；如需临时访问裸 IP/明文 HTTP，可临时放回 true -->
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

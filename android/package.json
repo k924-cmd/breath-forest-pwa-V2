@@ -1,0 +1,15 @@
+{
+  "name": "breath-forest-android",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "呼吸森林 Android 壳（Capacitor）：前端打进 APK，后端直连 http://IP:8080/v1",
+  "scripts": {
+    "sync": "node build.js"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0"
+  }
+}
