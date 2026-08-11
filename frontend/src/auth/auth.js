@@ -3,7 +3,7 @@
 // and returns a session token. The token is kept in sessionStorage so a refresh
 // keeps you signed in but closing the tab logs out.
 
-import { getApiBaseUrl, getSessionToken, ADMIN_SESSION_KEY } from '../services/conversation-service.js?v=20260808-8';
+import { getApiBaseUrl, getApiKeyHeader, getSessionToken, ADMIN_SESSION_KEY } from '../services/conversation-service.js?v=20260808-9';
 
 const REQUEST_TIMEOUT_MS = 10000;
 
@@ -15,7 +15,7 @@ export async function login(username, password) {
   try {
     const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
       method: 'POST',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...getApiKeyHeader() },
       body: JSON.stringify({ username: String(username ?? ''), password: String(password ?? '') }),
       signal: controller.signal
     });

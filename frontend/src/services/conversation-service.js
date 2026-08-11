@@ -1,4 +1,4 @@
-import { getMockReply } from '../mocks/conversation.js?v=20260808-8';
+import { getMockReply } from '../mocks/conversation.js?v=20260808-9';
 import {
   getApiBaseUrl,
   getApiKeyHeader,
@@ -7,7 +7,7 @@ import {
   CONTRACT_VERSION,
   ADMIN_SESSION_KEY,
   CONVERSATION_STORAGE_KEY,
-} from '../config.js?v=20260808-8';
+} from '../config.js?v=20260808-9';
 
 export { getApiBaseUrl, getApiKeyHeader, getAuthHeader, getSessionToken, CONTRACT_VERSION, ADMIN_SESSION_KEY, CONVERSATION_STORAGE_KEY };
 const REQUEST_TIMEOUT_MS = 5000;
