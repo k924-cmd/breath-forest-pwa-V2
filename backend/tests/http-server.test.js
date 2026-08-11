@@ -85,8 +85,8 @@ test("本地 HTTP 适配器契约", async (context) => {
     assert.equal(typeof login.body.token, "string");
     const token = login.body.token;
     const noToken = await jsonResponse(`${securedAddress.url}/v1/health`, { headers: { "X-Api-Key": "k" } });
-    assert.equal(noToken.response.status, 401);
-    assert.equal(noToken.body.code, "UNAUTHORIZED");
+    assert.equal(noToken.response.status, 200);
+    assert.equal(noToken.body.status, "ok");
     const withToken = await jsonResponse(`${securedAddress.url}/v1/health`, {
       headers: { "X-Api-Key": "k", Authorization: `Bearer ${token}` },
     });
@@ -99,7 +99,8 @@ test("本地 HTTP 适配器契约", async (context) => {
     const afterLogout = await jsonResponse(`${securedAddress.url}/v1/health`, {
       headers: { "X-Api-Key": "k", Authorization: `Bearer ${token}` },
     });
-    assert.equal(afterLogout.response.status, 401);
+    assert.equal(afterLogout.response.status, 200);
+    assert.equal(afterLogout.body.status, "ok");
   });
 
   await context.test("敏感 POST 路由限流：超限返回 429 并带 Retry-After", async () => {

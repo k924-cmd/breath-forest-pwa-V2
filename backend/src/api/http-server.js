@@ -79,7 +79,8 @@ export function createHttpAssistantServer(options = {}) {
 
       const pathname = parsePathname(request.url);
       const isAuthRoute = pathname === "/v1/auth/login" || pathname === "/v1/auth/logout";
-      if (!isAuthRoute && adminPasswordHash) {
+      const isPublicSnapshot = pathname === "/v1/health" || pathname === "/v1/bootstrap";
+      if (!isAuthRoute && !isPublicSnapshot && adminPasswordHash) {
         const bearer = String(request.headers.authorization ?? "");
         const token = bearer.startsWith("Bearer ") ? bearer.slice(7) : "";
         if (!token || !hasActiveSession(sessions, token, Date.now())) throw new HttpTransportError(401, "UNAUTHORIZED", "请求缺少有效登录会话。");
