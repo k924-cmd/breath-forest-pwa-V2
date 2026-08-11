@@ -8,8 +8,8 @@
 // 兼容旧部署：若 window.__API_BASE__ / window.__API_KEY__ 存在（index.html 内联注入），
 // 优先读取它们；没有则用下面的常量。
 
-const API_BASE_URL = ''; // 例：'https://backend.你的域名.com/v1'；留空 = 本地默认
-const API_KEY = '';      // 例：'xJ0v...'；留空 = 不发送 X-Api-Key
+const API_BASE_URL = 'https://thru-fresh-lightning-clinic.trycloudflare.com/v1'; // 例：'https://backend.你的域名.com/v1'；留空 = 本地默认
+const API_KEY = 'a1c8f8037ba7ec18b698d748ec4d90cdaaa616429875ea9d3900ce049144fbfe';      // 例：'xJ0v...'；留空 = 不发送 X-Api-Key
 
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8787/v1';
 const DEFAULT_API_KEY = '';
