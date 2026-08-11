@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from './conversation-service.js?v=20260808-7';
+import { getApiBaseUrl, getApiKeyHeader, getAuthHeader } from './conversation-service.js?v=20260808-7';
 
 const REQUEST_TIMEOUT_MS = 30000;
 
@@ -19,7 +19,7 @@ export async function transcribeAudio(blob, fetchImpl = globalThis.fetch) {
   try {
     const response = await fetchImpl(`${getApiBaseUrl()}/asr`, {
       method: 'POST',
-      headers: { Accept: 'application/json', 'Content-Type': blob.type || 'audio/webm' },
+      headers: { Accept: 'application/json', 'Content-Type': blob.type || 'audio/webm', ...getApiKeyHeader(), ...getAuthHeader() },
       body: blob,
       signal: controller.signal
     });

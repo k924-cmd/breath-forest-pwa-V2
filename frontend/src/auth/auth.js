@@ -1,37 +1,68 @@
-// Session-scoped admin gate. Credentials live here (initial admin account),
-// and the session is kept in sessionStorage so a refresh keeps you signed in
-// but closing the tab logs out.
+// Admin gate backed by the backend. Credentials no longer live in this file:
+// login calls the backend /v1/auth/login, which verifies against an SCrypt hash
+// and returns a session token. The token is kept in sessionStorage so a refresh
+// keeps you signed in but closing the tab logs out.
 
-const SESSION_KEY = 'breathForestAdminSessionV2';
-export const ADMIN_CREDENTIALS = Object.freeze({ username: 'admin', password: '123' });
+import { getApiBaseUrl, getSessionToken, ADMIN_SESSION_KEY } from '../services/conversation-service.js?v=20260808-7';
 
-export function login(username, password) {
-  if (String(username ?? '').trim() !== ADMIN_CREDENTIALS.username) {
-    return { ok: false, error: '账号不存在' };
-  }
-  if (String(password ?? '') !== ADMIN_CREDENTIALS.password) {
-    return { ok: false, error: '密码不正确' };
-  }
+const REQUEST_TIMEOUT_MS = 10000;
+
+export { getSessionToken };
+
+export async function login(username, password) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ signedInAt: new Date().toISOString() }));
+    const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: String(username ?? ''), password: String(password ?? '') }),
+      signal: controller.signal
+    });
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+    if (!response.ok) {
+      const message = payload && typeof payload.message === 'string' ? payload.message : '登录失败，请稍后再试';
+      return { ok: false, error: message };
+    }
+    if (typeof payload?.token !== 'string' || !payload.token) {
+      return { ok: false, error: '登录响应异常，请重试' };
+    }
+    try {
+      sessionStorage.setItem(ADMIN_SESSION_KEY, payload.token);
+    } catch {
+      // sessionStorage unavailable — token stays in memory for this session.
+    }
+    return { ok: true, token: payload.token };
   } catch {
-    // sessionStorage unavailable — treat as signed in for this session only.
+    return { ok: false, error: '无法连接后端服务，请确认服务已启动' };
+  } finally {
+    clearTimeout(timeout);
   }
-  return { ok: true };
 }
 
 export function isLoggedIn() {
-  try {
-    return Boolean(sessionStorage.getItem(SESSION_KEY));
-  } catch {
-    return false;
-  }
+  return Boolean(getSessionToken());
 }
 
-export function logout() {
+export async function logout() {
+  const token = getSessionToken();
   try {
-    sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
   } catch {
     // ignore
+  }
+  if (!token) return;
+  try {
+    await fetch(`${getApiBaseUrl()}/auth/logout`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` }
+    });
+  } catch {
+    // best-effort: server session will expire on its own
   }
 }

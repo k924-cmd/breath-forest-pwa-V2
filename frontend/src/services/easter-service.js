@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from './conversation-service.js?v=20260808-7';
+import { getApiBaseUrl, getApiKeyHeader, getAuthHeader } from './conversation-service.js?v=20260808-7';
 
 const REQUEST_TIMEOUT_MS = 30000;
 
@@ -16,7 +16,7 @@ export async function runSingingEasterEgg(text, fetchImpl = globalThis.fetch) {
   try {
     const response = await fetchImpl(`${getApiBaseUrl()}/tts/easter-egg`, {
       method: 'POST',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...getApiKeyHeader(), ...getAuthHeader() },
       body: JSON.stringify({ text: trimmed }),
       signal: controller.signal
     });

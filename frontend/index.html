@@ -26,12 +26,8 @@
         const RECOVERY_PARAM = 'bf-bootstrap';
         const localHosts = ['localhost', '127.0.0.1', '::1'];
         const isLocal = localHosts.includes(location.hostname);
-
-        // 手机联调：cloudflared 隧道地址每次变化，隧道重启后需同步更新此值
-        // （https://<随机>.trycloudflare.com/v1）。本地开发自动回退到 127.0.0.1:8787。
-        if (!isLocal) {
-          window.__API_BASE__ = 'https://derived-techrepublic-total-circus.trycloudflare.com/v1';
-        }
+        // API 配置统一在 src/config.js：本地自动回退到 127.0.0.1:8787；
+        // 部署时（GitHub Pages / Capacitor）在那里填后端地址与 API Key。
 
         function showBootstrapError(error) {
           const root = document.querySelector('#app');

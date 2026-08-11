@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from './conversation-service.js?v=20260808-7';
+import { getApiBaseUrl, getApiKeyHeader, getAuthHeader } from './conversation-service.js?v=20260808-7';
 
 const REQUEST_TIMEOUT_MS = 5000;
 
@@ -12,7 +12,7 @@ export async function fetchWeather(city, fetchImpl = globalThis.fetch) {
     const query = typeof city === 'string' && city.trim() ? encodeURIComponent(city.trim()) : encodeURIComponent('杭州');
     const response = await fetchImpl(`${getApiBaseUrl()}/weather?city=${query}`, {
       signal: controller.signal,
-      headers: { Accept: 'application/json' }
+      headers: { Accept: 'application/json', ...getApiKeyHeader(), ...getAuthHeader() }
     });
     if (!response || !response.ok) return { ...FALLBACK_WEATHER };
     const payload = await response.json();

@@ -1,11 +1,15 @@
 import { getMockReply } from '../mocks/conversation.js?v=20260808-7';
+import {
+  getApiBaseUrl,
+  getApiKeyHeader,
+  getAuthHeader,
+  getSessionToken,
+  CONTRACT_VERSION,
+  ADMIN_SESSION_KEY,
+  CONVERSATION_STORAGE_KEY,
+} from '../config.js?v=20260808-7';
 
-export const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8787/v1';
-export function getApiBaseUrl() {
-  return (globalThis.window && window.__API_BASE__) || DEFAULT_API_BASE_URL;
-}
-export const CONTRACT_VERSION = '1.0.0';
-const CONVERSATION_STORAGE_KEY = 'breathForestConversationIdV1';
+export { getApiBaseUrl, getApiKeyHeader, getAuthHeader, getSessionToken, CONTRACT_VERSION, ADMIN_SESSION_KEY, CONVERSATION_STORAGE_KEY };
 const REQUEST_TIMEOUT_MS = 5000;
 
 function createId(prefix) {
@@ -81,6 +85,8 @@ async function fetchJson(path, init = {}, fetchImpl = globalThis.fetch) {
       signal: controller.signal,
       headers: {
         Accept: 'application/json',
+        ...getApiKeyHeader(),
+        ...getAuthHeader(),
         ...(init.body ? { 'Content-Type': 'application/json; charset=utf-8' } : {}),
         ...init.headers
       }

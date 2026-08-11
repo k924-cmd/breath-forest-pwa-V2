@@ -91,7 +91,7 @@ test("对话历史 API：DELETE 方法出现在 CORS preflight 的 Allow-Methods
   assert.equal(preflight.status, 204);
   assert.equal(preflight.headers.get("access-control-allow-origin"), "http://localhost:4173");
   assert.equal(preflight.headers.get("access-control-allow-methods"), "GET, POST, OPTIONS, DELETE");
-  assert.equal(preflight.headers.get("access-control-allow-headers"), "Content-Type");
+  assert.equal(preflight.headers.get("access-control-allow-headers"), "Content-Type, X-Api-Key, Authorization");
 });
 
 test("会话完整链路：发消息 → 读取两条 → 删除 → 读取为空", async (context) => {

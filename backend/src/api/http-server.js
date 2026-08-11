@@ -1,10 +1,16 @@
 import { createServer } from "node:http";
+import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { createLocalAssistant } from "../index.js";
 
 export const DEFAULT_HTTP_HOST = "127.0.0.1";
 export const DEFAULT_HTTP_PORT = 8787;
 export const DEFAULT_ALLOWED_ORIGINS = Object.freeze(["http://localhost:4173", "http://127.0.0.1:4173", "http://localhost:4174", "http://127.0.0.1:4174"]);
 export const DEFAULT_ALLOW_ORIGINS_WILDCARD = false;
+export const DEFAULT_API_KEY = "";
+export const DEFAULT_ADMIN_PASSWORD_HASH = "";
+export const DEFAULT_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+export const DEFAULT_RATE_LIMIT_ENABLED = false;
+export const DEFAULT_RATE_LIMIT_PER_MINUTE = 10;
 export const DEFAULT_MAX_BODY_BYTES = 64 * 1024;
 export const DEFAULT_MAX_AUDIO_BYTES = 8 * 1024 * 1024;
 export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
@@ -25,13 +31,22 @@ export function createHttpAssistantServer(options = {}) {
   const port = options.port ?? DEFAULT_HTTP_PORT;
   const allowedOrigins = normalizeOrigins(options.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS);
   const allowOriginWildcard = options.allowOriginWildcard ?? DEFAULT_ALLOW_ORIGINS_WILDCARD;
+  const apiKey = options.apiKey ?? DEFAULT_API_KEY;
+  const adminPasswordHash = options.adminPasswordHash ?? DEFAULT_ADMIN_PASSWORD_HASH;
+  const sessionTtlMs = options.sessionTtlMs ?? DEFAULT_SESSION_TTL_MS;
+  const rateLimitEnabled = options.rateLimitEnabled ?? DEFAULT_RATE_LIMIT_ENABLED;
+  const rateLimitMax = options.rateLimitMax ?? DEFAULT_RATE_LIMIT_PER_MINUTE;
   const actorId = options.actorId ?? "local-http-actor";
   const scopeId = options.scopeId ?? "local-http-scope";
   const maxBodyBytes = options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
   const maxAudioBytes = options.maxAudioBytes ?? DEFAULT_MAX_AUDIO_BYTES;
   const requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+  const sessions = new Map(); // token -> expiresAt（内存级会话，进程重启即失效）
+  const rateBuckets = rateLimitEnabled ? new Map() : null; // ip -> number[]（时间戳）
   let requestSequence = 0;
   let listening = false;
+  const rateSweeper = rateLimitEnabled ? setInterval(() => sweepRateBuckets(rateBuckets), 60_000) : null;
+  rateSweeper?.unref?.();
 
   const server = createServer(async (request, response) => {
     const requestId = `http-${String(++requestSequence).padStart(6, "0")}`;
@@ -49,12 +64,13 @@ export function createHttpAssistantServer(options = {}) {
 
     try {
       if (origin && !originAllowed) throw new HttpTransportError(403, "POLICY_REJECTED", "请求来源不在允许列表中。");
+      if (apiKey && request.headers["x-api-key"] !== apiKey) throw new HttpTransportError(401, "UNAUTHORIZED", "请求缺少有效 API Key。");
       if (request.method === "OPTIONS") {
         validatePreflight(request);
         response.writeHead(204, {
           ...corsHeaders,
           "Access-Control-Allow-Methods": "GET, POST, OPTIONS, DELETE",
-          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Headers": "Content-Type, X-Api-Key, Authorization",
           "Access-Control-Max-Age": "600",
         });
         response.end();
@@ -62,6 +78,37 @@ export function createHttpAssistantServer(options = {}) {
       }
 
       const pathname = parsePathname(request.url);
+      const isAuthRoute = pathname === "/v1/auth/login" || pathname === "/v1/auth/logout";
+      if (!isAuthRoute && adminPasswordHash) {
+        const bearer = String(request.headers.authorization ?? "");
+        const token = bearer.startsWith("Bearer ") ? bearer.slice(7) : "";
+        if (!token || !hasActiveSession(sessions, token, Date.now())) throw new HttpTransportError(401, "UNAUTHORIZED", "请求缺少有效登录会话。");
+      }
+      if (rateLimitEnabled && isRateLimitedPath(pathname) && request.method === "POST") {
+        const ip = clientIp(request);
+        if (ip && isRateLimited(rateBuckets, ip, rateLimitMax)) {
+          throw new HttpTransportError(429, "RATE_LIMITED", "请求过于频繁，请稍后再试。", false, { "Retry-After": "60" });
+        }
+      }
+      if (pathname === "/v1/auth/login") {
+        requireMethod(request, "POST");
+        requireJsonContentType(request);
+        const body = await readJsonBody(request, maxBodyBytes);
+        validateLoginBody(body);
+        const authorized = verifyAdminLogin(adminPasswordHash, body.username, body.password);
+        if (!authorized) throw new HttpTransportError(401, "INVALID_CREDENTIALS", "账号或密码不正确。");
+        const token = randomBytes(32).toString("hex");
+        sessions.set(token, Date.now() + sessionTtlMs);
+        writeJson(response, 200, { token, expiresInMs: sessionTtlMs }, corsHeaders);
+        return;
+      }
+      if (pathname === "/v1/auth/logout") {
+        requireMethod(request, "POST");
+        const token = String(request.headers.authorization ?? "").replace(/^Bearer /, "");
+        if (token) sessions.delete(token);
+        writeJson(response, 200, { ok: true }, corsHeaders);
+        return;
+      }
       if (pathname === "/v1/health") {
         requireMethod(request, "GET");
         writeJson(response, 200, { status: "ok", contractVersion: "1.0.0", mode: "local_mock" }, corsHeaders);
@@ -169,6 +216,7 @@ export function createHttpAssistantServer(options = {}) {
   }
 
   async function close() {
+    if (rateSweeper) clearInterval(rateSweeper);
     if (!listening) return;
     await new Promise((resolve) => {
       let settled = false;
@@ -215,6 +263,69 @@ function formatHost(host) {
   return host.includes(":") ? `[${host}]` : host;
 }
 
+function validateLoginBody(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new HttpTransportError(400, "INVALID_REQUEST", "登录请求格式无效。");
+  if (Object.keys(value).some((key) => key !== "username" && key !== "password")) throw new HttpTransportError(400, "INVALID_REQUEST", "登录请求包含未定义字段。");
+  if (typeof value.username !== "string" || !value.username || value.username.length > 64) throw new HttpTransportError(400, "INVALID_REQUEST", "用户名格式无效。");
+  if (typeof value.password !== "string" || value.password.length > 128) throw new HttpTransportError(400, "INVALID_REQUEST", "密码格式无效。");
+}
+
+function verifyAdminLogin(adminPasswordHash, username, password) {
+  if (!adminPasswordHash) return false;
+  if (username !== "admin") return false;
+  const salt = Buffer.from(adminPasswordHash.slice(0, 64), "hex");
+  const expected = Buffer.from(adminPasswordHash.slice(64, 192), "hex");
+  if (salt.length !== 32 || expected.length !== 64) return false;
+  const actual = scryptSync(password, salt, 64);
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
+function isRateLimitedPath(pathname) {
+  return pathname === "/v1/asr" || pathname === "/v1/tts/easter-egg" || pathname === "/v1/conversations/messages";
+}
+
+function hasActiveSession(sessions, token, now) {
+  const expiresAt = sessions.get(token);
+  if (expiresAt === undefined) return false;
+  if (expiresAt <= now) {
+    sessions.delete(token);
+    return false;
+  }
+  return true;
+}
+
+function clientIp(request) {
+  const forwarded = request.headers["cf-connecting-ip"];
+  const raw = (typeof forwarded === "string" && forwarded.trim() ? forwarded.trim() : request.socket.remoteAddress ?? "").split(",")[0].trim();
+  // 只接受可信的 IPv4（后端只监听 127.0.0.1、只能经 cloudflared 触达时该头不可伪造）。
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(raw)) return raw;
+  if (raw.startsWith("::ffff:") && /^\d{1,3}(\.\d{1,3}){3}$/.test(raw.slice(7))) return raw.slice(7);
+  return null;
+}
+
+function isRateLimited(rateBuckets, ip, rateLimitMax) {
+  const now = Date.now();
+  const bucket = rateBuckets.get(ip);
+  if (!bucket) {
+    rateBuckets.set(ip, [now]);
+    return false;
+  }
+  const cutoff = now - 60_000;
+  while (bucket.length > 0 && bucket[0] <= cutoff) bucket.shift();
+  if (bucket.length >= rateLimitMax) return true;
+  bucket.push(now);
+  return false;
+}
+
+function sweepRateBuckets(rateBuckets) {
+  if (!rateBuckets) return;
+  const cutoff = Date.now() - 60_000;
+  for (const [ip, bucket] of rateBuckets) {
+    while (bucket.length > 0 && bucket[0] <= cutoff) bucket.shift();
+    if (bucket.length === 0) rateBuckets.delete(ip);
+  }
+}
+
 function parsePathname(rawUrl) {
   try {
     return new URL(rawUrl ?? "/", "http://local.invalid").pathname;
@@ -241,7 +352,7 @@ function validatePreflight(request) {
     .split(",")
     .map((header) => header.trim().toLowerCase())
     .filter(Boolean);
-  if (requestedHeaders.some((header) => header !== "content-type")) throw new HttpTransportError(400, "INVALID_REQUEST", "预检请求只允许 Content-Type 请求头。");
+  if (requestedHeaders.some((header) => header !== "content-type" && header !== "x-api-key")) throw new HttpTransportError(400, "INVALID_REQUEST", "预检请求只允许 Content-Type 和 X-Api-Key 请求头。");
 }
 
 function parseAudioContentType(contentType) {
@@ -287,10 +398,35 @@ async function readJsonBody(request, maxBodyBytes) {
     if (!exceeded) chunks.push(chunk);
   }
   if (exceeded) throw new HttpTransportError(413, "INPUT_TOO_LONG", "请求体超过 64 KiB 限制。");
+  const text = Buffer.concat(chunks).toString("utf8");
+  assertJsonDepth(text, 64);
   try {
-    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    return JSON.parse(text);
   } catch {
     throw new HttpTransportError(400, "INVALID_REQUEST", "请求体不是有效 JSON。");
+  }
+}
+
+// 按括号深度粗略守卫，防止极端嵌套的 JSON 解析卡死 CPU；跳过字符串字面量以不误判内容里的括号。
+function assertJsonDepth(text, maxDepth) {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = true;
+    else if (char === "{" || char === "[") {
+      depth++;
+      if (depth > maxDepth) throw new HttpTransportError(400, "INVALID_REQUEST", "请求体嵌套过深。");
+    } else if (char === "}" || char === "]") {
+      depth = Math.max(0, depth - 1);
+    }
   }
 }
 

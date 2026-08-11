@@ -641,10 +641,10 @@ function bind() {
       input.value = '';
     }
   });
-  document.querySelector('#login-form')?.addEventListener('submit', event => {
+  document.querySelector('#login-form')?.addEventListener('submit', async event => {
     event.preventDefault();
     const form = event.currentTarget;
-    const result = login(form.elements.username.value, form.elements.password.value);
+    const result = await login(form.elements.username.value, form.elements.password.value);
     const error = document.querySelector('#login-error');
     if (!result.ok) {
       if (error) error.textContent = result.error;

@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { scryptSync } from "node:crypto";
 import { createHttpAssistantServer, DEFAULT_REQUEST_TIMEOUT_MS } from "../src/api/http-server.js";
+
+function makeAdminHash(password, saltHex) {
+  const salt = Buffer.from(saltHex, "hex");
+  return salt.toString("hex") + scryptSync(password, salt, 64).toString("hex");
+}
 
 function messageRequest(message, sequence, overrides = {}) {
   return {
@@ -32,6 +38,103 @@ test("本地 HTTP 适配器契约", async (context) => {
   assert.equal(address.host, "127.0.0.1");
   assert.ok(address.port > 0);
   assert.equal(service.server.requestTimeout, DEFAULT_REQUEST_TIMEOUT_MS);
+
+  await context.test("API Key 未配置时不要求鉴权", async () => {
+    const { response, body } = await jsonResponse(`${address.url}/v1/health`);
+    assert.equal(response.status, 200);
+    assert.equal(body.status, "ok");
+  });
+
+  await context.test("API Key 配置后缺失或错误返回 401，正确返回 200", async () => {
+    const secured = createHttpAssistantServer({ port: 0, apiKey: "s3cret" });
+    const securedAddress = await secured.start();
+    context.after(() => secured.close());
+    const missing = await jsonResponse(`${securedAddress.url}/v1/health`);
+    assert.equal(missing.response.status, 401);
+    assert.equal(missing.body.code, "UNAUTHORIZED");
+    assert.equal(missing.body.retryable, false);
+    const wrong = await jsonResponse(`${securedAddress.url}/v1/health`, { headers: { "X-Api-Key": "wrong" } });
+    assert.equal(wrong.response.status, 401);
+    const ok = await jsonResponse(`${securedAddress.url}/v1/health`, { headers: { "X-Api-Key": "s3cret" } });
+    assert.equal(ok.response.status, 200);
+    assert.equal(ok.body.status, "ok");
+  });
+
+  await context.test("后端登录：正确凭据发 token、错误凭据 401、无 token 访问受限路由 401", async () => {
+    const secured = createHttpAssistantServer({
+      port: 0,
+      apiKey: "k",
+      adminPasswordHash: makeAdminHash("correct-horse", "ab".repeat(32)),
+      sessionTtlMs: 60_000,
+    });
+    const securedAddress = await secured.start();
+    context.after(() => secured.close());
+    const badLogin = await jsonResponse(`${securedAddress.url}/v1/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Api-Key": "k" },
+      body: JSON.stringify({ username: "admin", password: "wrong-password" }),
+    });
+    assert.equal(badLogin.response.status, 401);
+    assert.equal(badLogin.body.code, "INVALID_CREDENTIALS");
+    const login = await jsonResponse(`${securedAddress.url}/v1/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Api-Key": "k" },
+      body: JSON.stringify({ username: "admin", password: "correct-horse" }),
+    });
+    assert.equal(login.response.status, 200);
+    assert.equal(typeof login.body.token, "string");
+    const token = login.body.token;
+    const noToken = await jsonResponse(`${securedAddress.url}/v1/health`, { headers: { "X-Api-Key": "k" } });
+    assert.equal(noToken.response.status, 401);
+    assert.equal(noToken.body.code, "UNAUTHORIZED");
+    const withToken = await jsonResponse(`${securedAddress.url}/v1/health`, {
+      headers: { "X-Api-Key": "k", Authorization: `Bearer ${token}` },
+    });
+    assert.equal(withToken.response.status, 200);
+    const logout = await jsonResponse(`${securedAddress.url}/v1/auth/logout`, {
+      method: "POST",
+      headers: { "X-Api-Key": "k", Authorization: `Bearer ${token}` },
+    });
+    assert.equal(logout.response.status, 200);
+    const afterLogout = await jsonResponse(`${securedAddress.url}/v1/health`, {
+      headers: { "X-Api-Key": "k", Authorization: `Bearer ${token}` },
+    });
+    assert.equal(afterLogout.response.status, 401);
+  });
+
+  await context.test("敏感 POST 路由限流：超限返回 429 并带 Retry-After", async () => {
+    const limited = createHttpAssistantServer({ port: 0, rateLimitEnabled: true, rateLimitMax: 2 });
+    const limitedAddress = await limited.start();
+    context.after(() => limited.close());
+    const headers = { "X-Api-Key": "k", Authorization: "Bearer t", "CF-Connecting-IP": "203.0.113.7", "Content-Type": "application/json" };
+    const post = () => jsonResponse(`${limitedAddress.url}/v1/conversations/messages`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(messageRequest("ping", 999)),
+    });
+    const get = () => jsonResponse(`${limitedAddress.url}/v1/health`, { headers: { "CF-Connecting-IP": "203.0.113.7" } });
+    assert.equal((await get()).response.status, 200);
+    assert.ok([200, 400].includes((await post()).response.status));
+    assert.ok([200, 400].includes((await post()).response.status));
+    const blocked = await post();
+    assert.equal(blocked.response.status, 429);
+    assert.equal(blocked.body.code, "RATE_LIMITED");
+    assert.equal(blocked.response.headers.get("retry-after"), "60");
+    const getStillAllowed = await get();
+    assert.equal(getStillAllowed.response.status, 200);
+  });
+
+  await context.test("JSON 深度守卫：深层嵌套请求返回 400", async () => {
+    let nested = null;
+    for (let i = 0; i < 80; i++) nested = { a: nested };
+    const deep = await jsonResponse(`${address.url}/v1/conversations/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(nested),
+    });
+    assert.equal(deep.response.status, 400);
+    assert.equal(deep.body.code, "INVALID_REQUEST");
+  });
 
   await context.test("GET health", async () => {
     const { response, body } = await jsonResponse(`${address.url}/v1/health`);
@@ -126,7 +229,7 @@ test("本地 HTTP 适配器契约", async (context) => {
     assert.equal(preflight.status, 204);
     assert.equal(preflight.headers.get("access-control-allow-origin"), "http://127.0.0.1:4173");
     assert.equal(preflight.headers.get("access-control-allow-methods"), "GET, POST, OPTIONS, DELETE");
-    assert.equal(preflight.headers.get("access-control-allow-headers"), "Content-Type");
+    assert.equal(preflight.headers.get("access-control-allow-headers"), "Content-Type, X-Api-Key, Authorization");
 
     const identityPreflight = await jsonResponse(`${address.url}/v1/conversations/messages`, {
       method: "OPTIONS",

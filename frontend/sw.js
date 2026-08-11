@@ -1,7 +1,7 @@
-const CACHE_NAME = 'breath-forest-ui-v32';
+const CACHE_NAME = 'breath-forest-ui-v33';
 const CORE_ASSETS = [
   './', './index.html', './styles.css?v=20260808-7', './manifest.webmanifest', './src/main.js?v=20260808-7',
-  './src/app/state.js?v=20260808-7', './src/components/icons.js?v=20260808-7', './src/components/message-cards.js?v=20260808-7', './src/presentation.js?v=20260808-7', './src/utils/html.js?v=20260808-7',
+  './src/config.js?v=20260808-7', './src/app/state.js?v=20260808-7', './src/components/icons.js?v=20260808-7', './src/components/message-cards.js?v=20260808-7', './src/presentation.js?v=20260808-7', './src/utils/html.js?v=20260808-7',
   './src/pages/home.js?v=20260808-7', './src/pages/devices.js?v=20260808-7', './src/pages/chat.js?v=20260808-7', './src/pages/profile.js?v=20260808-7',
   './src/services/conversation-service.js?v=20260808-7', './src/services/device-service.js?v=20260808-7', './src/services/environment-service.js?v=20260808-7',
   './src/services/asr-service.js?v=20260808-7', './src/services/easter-service.js?v=20260808-7', './src/utils/audio.js?v=20260808-7', './src/utils/feedback.js?v=20260808-7', './src/utils/play-audio.js?v=20260808-7',
