@@ -64,7 +64,6 @@ export function createHttpAssistantServer(options = {}) {
 
     try {
       if (origin && !originAllowed) throw new HttpTransportError(403, "POLICY_REJECTED", "请求来源不在允许列表中。");
-      if (apiKey && request.headers["x-api-key"] !== apiKey) throw new HttpTransportError(401, "UNAUTHORIZED", "请求缺少有效 API Key。");
       if (request.method === "OPTIONS") {
         validatePreflight(request);
         response.writeHead(204, {
@@ -76,6 +75,7 @@ export function createHttpAssistantServer(options = {}) {
         response.end();
         return;
       }
+      if (apiKey && request.headers["x-api-key"] !== apiKey) throw new HttpTransportError(401, "UNAUTHORIZED", "请求缺少有效 API Key。");
 
       const pathname = parsePathname(request.url);
       const isAuthRoute = pathname === "/v1/auth/login" || pathname === "/v1/auth/logout";
