@@ -353,7 +353,7 @@ function validatePreflight(request) {
     .split(",")
     .map((header) => header.trim().toLowerCase())
     .filter(Boolean);
-  if (requestedHeaders.some((header) => header !== "content-type" && header !== "x-api-key")) throw new HttpTransportError(400, "INVALID_REQUEST", "预检请求只允许 Content-Type 和 X-Api-Key 请求头。");
+  if (requestedHeaders.some((header) => header !== "content-type" && header !== "x-api-key" && header !== "authorization")) throw new HttpTransportError(400, "INVALID_REQUEST", "预检请求只允许 Content-Type、X-Api-Key 和 Authorization 请求头。");
 }
 
 function parseAudioContentType(contentType) {
