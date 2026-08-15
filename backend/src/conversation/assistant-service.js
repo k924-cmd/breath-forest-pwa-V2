@@ -219,6 +219,29 @@ export class AssistantService {
     };
   }
 
+  async synthesizeSpeech(text, options = {}) {
+    if (!this.tts?.available) return { available: false, reason: "tts_unavailable" };
+    const content = typeof text === "string" ? text.trim() : "";
+    if (!content) return { available: false, reason: "tts_empty" };
+    let result;
+    try {
+      result = await this.tts.synthesize(content, { sing: false, voice: options.voice });
+    } catch {
+      result = null;
+    }
+    if (!result || !Buffer.isBuffer(result.audio) || !result.audio.length) {
+      return { available: false, reason: "tts_failed" };
+    }
+    return {
+      available: true,
+      audio: result.audio,
+      format: result.format ?? "wav",
+      voice: result.voice ?? null,
+      referenceId: result.referenceId ?? "mimo",
+      observedAt: result.observedAt,
+    };
+  }
+
   async runEasterEgg(userText) {
     if (!this.easterEgg?.available) {
       return { available: false, reason: "easter_egg_unavailable" };

@@ -163,6 +163,25 @@ export function createHttpAssistantServer(options = {}) {
         if (!timedOut && !response.writableEnded) writeJson(response, 200, { available: false, reason: result?.reason ?? "not_singing" }, corsHeaders);
         return;
       }
+      if (pathname === "/v1/tts/speak") {
+        requireMethod(request, "POST");
+        requireJsonContentType(request);
+        const body = await readJsonBody(request, maxBodyBytes);
+        validateSpeakBody(body);
+        const result = await assistant.synthesizeSpeech(body.text, { voice: body.voice });
+        if (result?.available === true) {
+          if (!timedOut && !response.writableEnded) {
+            writeJson(response, 200, {
+              available: true,
+              audio: Buffer.from(result.audio).toString("base64"),
+              format: result.format,
+              voice: result.voice,
+            }, corsHeaders);
+          }
+          return;
+        }
+        throw new HttpTransportError(503, "SERVICE_UNAVAILABLE", "语音合成服务暂不可用，请稍后再试。", true);
+      }
       if (pathname === "/v1/conversations/messages") {
         requireMethod(request, "POST");
         requireJsonContentType(request);
@@ -282,7 +301,7 @@ function verifyAdminLogin(adminPasswordHash, username, password) {
 }
 
 function isRateLimitedPath(pathname) {
-  return pathname === "/v1/asr" || pathname === "/v1/tts/easter-egg" || pathname === "/v1/conversations/messages";
+  return pathname === "/v1/asr" || pathname === "/v1/tts/easter-egg" || pathname === "/v1/tts/speak" || pathname === "/v1/conversations/messages";
 }
 
 function hasActiveSession(sessions, token, now) {
@@ -461,6 +480,13 @@ function validateEasterEggBody(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new HttpTransportError(400, "INVALID_REQUEST", "彩蛋请求格式无效。");
   if (Object.keys(value).some((key) => key !== "text")) throw new HttpTransportError(400, "INVALID_REQUEST", "彩蛋请求包含未定义字段。");
   if (typeof value.text !== "string" || !value.text.trim()) throw new HttpTransportError(400, "INVALID_REQUEST", "text 必须是非空字符串。");
+}
+
+function validateSpeakBody(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new HttpTransportError(400, "INVALID_REQUEST", "语音合成请求格式无效。");
+  if (Object.keys(value).some((key) => key !== "text" && key !== "voice")) throw new HttpTransportError(400, "INVALID_REQUEST", "语音合成请求包含未定义字段。");
+  if (typeof value.text !== "string" || !value.text.trim()) throw new HttpTransportError(400, "INVALID_REQUEST", "text 必须是非空字符串。");
+  if (value.voice !== undefined && (typeof value.voice !== "string" || !value.voice.trim())) throw new HttpTransportError(400, "INVALID_REQUEST", "voice 格式无效。");
 }
 
 function normalizeHttpError(error) {

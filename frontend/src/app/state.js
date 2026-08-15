@@ -1,4 +1,4 @@
-import { createMockDevices } from '../mocks/devices.js?v=20260808-10';
+import { createMockDevices } from '../mocks/devices.js?v=20260808-11';
 
 export const STORAGE_KEY = 'breathForestUiV2';
 
@@ -51,7 +51,8 @@ export const state = {
   },
   settings: {
     sound: stored.settings?.sound !== false,
-    vibrate: stored.settings?.vibrate !== false
+    vibrate: stored.settings?.vibrate !== false,
+    speak: stored.settings?.speak !== false
   },
   logs: Array.isArray(stored.logs) ? stored.logs.slice(0, 100) : [
     { time: '10:00', type: 'ai', text: 'UI Mock 已准备就绪。' },

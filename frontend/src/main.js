@@ -1,29 +1,30 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-10';
-import { icon } from './components/icons.js?v=20260808-10';
-import { homePage } from './pages/home.js?v=20260808-10';
-import { devicesPage } from './pages/devices.js?v=20260808-10';
-import { chatPage } from './pages/chat.js?v=20260808-10';
-import { profilePage } from './pages/profile.js?v=20260808-10';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-10';
-import { loginPage } from './components/login.js?v=20260808-10';
-import { login, isLoggedIn } from './auth/auth.js?v=20260808-10';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-10';
-import { fetchWeather } from './services/weather-service.js?v=20260808-10';
-import { toggleMockDevice } from './services/device-service.js?v=20260808-10';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-10';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-10';
-import { escapeHtml } from './utils/html.js?v=20260808-10';
-import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-10';
-import { initFeedback } from './utils/feedback.js?v=20260808-10';
-import { transcribeAudio } from './services/asr-service.js?v=20260808-10';
-import { runSingingEasterEgg } from './services/easter-service.js?v=20260808-10';
-import { playBase64Audio, unlockAudio } from './utils/play-audio.js?v=20260808-10';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-10';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-11';
+import { icon } from './components/icons.js?v=20260808-11';
+import { homePage } from './pages/home.js?v=20260808-11';
+import { devicesPage } from './pages/devices.js?v=20260808-11';
+import { chatPage } from './pages/chat.js?v=20260808-11';
+import { profilePage } from './pages/profile.js?v=20260808-11';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-11';
+import { loginPage } from './components/login.js?v=20260808-11';
+import { login, isLoggedIn } from './auth/auth.js?v=20260808-11';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-11';
+import { fetchWeather } from './services/weather-service.js?v=20260808-11';
+import { toggleMockDevice } from './services/device-service.js?v=20260808-11';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-11';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-11';
+import { escapeHtml } from './utils/html.js?v=20260808-11';
+import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-11';
+import { initFeedback } from './utils/feedback.js?v=20260808-11';
+import { transcribeAudio } from './services/asr-service.js?v=20260808-11';
+import { runSingingEasterEgg } from './services/easter-service.js?v=20260808-11';
+import { synthesizeSpeech } from './services/tts-service.js?v=20260808-11';
+import { playBase64Audio, unlockAudio } from './utils/play-audio.js?v=20260808-11';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-11';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260808-10';
+} from './presentation.js?v=20260808-11';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
@@ -436,6 +437,15 @@ function setStreamingUi(isStreaming) {
   if (submit) submit.disabled = isStreaming;
 }
 
+// 正常对话回复的语音播报：仅在「语音播报」开关开启时合成并播放，失败静默降级（文字回复已展示）。
+async function speakReply(content) {
+  if (state.settings.speak !== true) return;
+  if (typeof content !== 'string' || !content.trim()) return;
+  const result = await synthesizeSpeech(content);
+  if (!result?.available || !result.audioBase64) return;
+  await playBase64Audio(result.audioBase64, result.format);
+}
+
 async function sendMessage(text, continuation, options = {}) {
   if (state.isStreaming || selectionMode) return;
   const clientMessageId = crypto.randomUUID?.() || `client-message-${Date.now()}-${Math.random()}`;
@@ -481,6 +491,7 @@ async function sendMessage(text, continuation, options = {}) {
     renderMessages();
     bind();
     scrollChat(true);
+    await speakReply(pending.content);
   } catch {
     await useUiMockSnapshot();
     pending.content = '本地 UI Mock / 未连接后端：暂时无法生成演示回复，请稍后再试。';
@@ -599,7 +610,7 @@ function bind() {
   document.querySelectorAll('[data-action="toggle-feedback"]').forEach(input => {
     input.onchange = () => {
       const key = input.dataset.feedbackKey;
-      if (key === 'sound' || key === 'vibrate') {
+      if (key === 'sound' || key === 'vibrate' || key === 'speak') {
         state.settings[key] = input.checked;
         saveState();
       }
