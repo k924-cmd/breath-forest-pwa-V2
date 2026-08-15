@@ -15,7 +15,7 @@ import { loadDotEnvIfPresent } from "../config/env.js";
 export const MIMO_TTS_DEFAULT_ENDPOINT = "https://api.xiaomimimo.com/v1/chat/completions";
 export const MIMO_TTS_DEFAULT_MODEL = "mimo-v2.5-tts";
 export const MIMO_TTS_DEFAULT_VOICE = "茉莉";
-export const MIMO_TTS_DEFAULT_FORMAT = "wav";
+export const MIMO_TTS_DEFAULT_FORMAT = "mp3";
 export const MIMO_TTS_TIMEOUT_MS_CAP = 30_000;
 export const MIMO_TTS_MAX_TEXT_BYTES = 4 * 1024;
 export const SINGING_TAG = "(唱歌)";

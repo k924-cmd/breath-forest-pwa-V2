@@ -580,6 +580,27 @@ h1, h2, p { margin: 0; }
 @keyframes dots { to { width: 1.5em; } }
 .bubble-error { border-color: #fecaca; background: rgba(254, 242, 242, .8); }
 
+/* 语音播报小喇叭：消息回复内的播放/停止按钮 */
+.speak-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin: 4px 0 0 2px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .15s ease, background .15s ease, transform .1s ease;
+}
+.speak-btn svg { width: 15px; height: 15px; }
+.speak-btn:hover { color: var(--accent); background: rgba(59, 130, 246, .08); }
+.speak-btn:active { transform: scale(.9); }
+.speak-btn.playing { color: #fff; background: var(--accent); border-color: var(--accent); }
+
 /* 长按多选：消息块勾选框 + 选中高亮 + 底部操作栏 */
 .message-block { position: relative; }
 .message-block.selectable { padding-left: 24px; cursor: pointer; -webkit-user-select: none; user-select: none; }

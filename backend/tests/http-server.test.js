@@ -403,3 +403,81 @@ test("POST /v1/asr 空音频与超限音频返回契约错误", async (context) 
   assert.equal(oversized.body.code, "INPUT_TOO_LONG");
   assert.doesNotMatch(JSON.stringify([empty.body, oversized.body]), /stack|node:|at\s+\w+/i);
 });
+
+test("POST /v1/tts/speak 正常语音合成返回音频", async (context) => {
+  const assistant = {
+    getBootstrap: async () => ({ contractVersion: "1.0.0", mode: "local_mock" }),
+    sendMessage: async () => ({}),
+    synthesizeSpeech: async (text, options) => ({
+      available: true,
+      audio: Buffer.from("fake-sing-wav"),
+      format: "wav",
+      voice: options?.voice ?? "冰糖",
+    }),
+  };
+  const service = createHttpAssistantServer({ assistant, port: 0 });
+  const address = await service.start();
+  context.after(() => service.close());
+
+  const { response, body } = await jsonResponse(`${address.url}/v1/tts/speak`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "空气净化器已开启" }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal(body.available, true);
+  assert.equal(body.format, "wav");
+  assert.equal(body.voice, "冰糖");
+  assert.equal(Buffer.from(body.audio, "base64").toString(), "fake-sing-wav");
+});
+
+test("POST /v1/tts/speak 语音合成失败返回 503", async (context) => {
+  const assistant = {
+    getBootstrap: async () => ({ contractVersion: "1.0.0", mode: "local_mock" }),
+    sendMessage: async () => ({}),
+    synthesizeSpeech: async () => ({ available: false, reason: "tts_failed" }),
+  };
+  const service = createHttpAssistantServer({ assistant, port: 0 });
+  const address = await service.start();
+  context.after(() => service.close());
+
+  const { response, body } = await jsonResponse(`${address.url}/v1/tts/speak`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "你好" }),
+  });
+  assert.equal(response.status, 503);
+  assert.equal(body.code, "SERVICE_UNAVAILABLE");
+});
+
+test("POST /v1/tts/speak 校验请求体", async (context) => {
+  const assistant = {
+    getBootstrap: async () => ({ contractVersion: "1.0.0", mode: "local_mock" }),
+    sendMessage: async () => ({}),
+    synthesizeSpeech: async () => ({ available: false, reason: "tts_failed" }),
+  };
+  const service = createHttpAssistantServer({ assistant, port: 0 });
+  const address = await service.start();
+  context.after(() => service.close());
+
+  const empty = await jsonResponse(`${address.url}/v1/tts/speak`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  assert.equal(empty.response.status, 400);
+
+  const unknownField = await jsonResponse(`${address.url}/v1/tts/speak`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "x", evil: true }),
+  });
+  assert.equal(unknownField.response.status, 400);
+
+  const badVoice = await jsonResponse(`${address.url}/v1/tts/speak`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "x", voice: "  " }),
+  });
+  assert.equal(badVoice.response.status, 400);
+});

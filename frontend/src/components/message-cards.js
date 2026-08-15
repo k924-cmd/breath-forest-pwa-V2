@@ -1,4 +1,5 @@
-import { escapeHtml } from '../utils/html.js?v=20260808-11';
+import { escapeHtml } from '../utils/html.js?v=20260808-13';
+import { icon } from './icons.js?v=20260808-13';
 import {
   formatObservedAt,
   getActionLabel,
@@ -9,7 +10,7 @@ import {
   getTaskName,
   getTaskPresentation,
   splitDisclaimerContent
-} from '../presentation.js?v=20260808-11';
+} from '../presentation.js?v=20260808-13';
 
 function findDevice(deviceId, devices) {
   return (Array.isArray(devices) ? devices : []).find(device => device.id === deviceId);
@@ -80,7 +81,10 @@ export function realTimeHtml(realtime) {
 
 export function structuredMessageHtml(message, devices) {
   const presentation = message.role === 'assistant' ? getResponsePresentation(message.responseType) : null;
-  return `<div class="message-block ${message.role === 'user' ? 'user' : 'assistant'}" data-message-id="${escapeHtml(message.id)}"><div class="bubble ${message.role === 'user' ? 'user' : ''}${message.status === 'pending' ? ' streaming' : ''}${message.status === 'error' ? ' bubble-error' : ''}">${presentation ? `<span class="response-label ${presentation.tone}">${presentation.icon} ${presentation.label}</span>` : ''}${contentHtml(message.content)}</div>${confirmationHtml(message.confirmation)}${clarificationHtml(message.clarification)}${taskHtml(message.task)}${receiptHtml(message.receipt, devices)}${realTimeHtml(message.realtime)}${errorHtml(message.error, message.responseType)}${sourcesHtml(message.sources, message.sourceMode)}</div>`;
+  const speakButton = message.role === 'assistant' && message.status === 'complete' && typeof message.content === 'string' && message.content.trim()
+    ? `<button class="speak-btn" data-action="speak" data-text="${escapeHtml(message.content)}" aria-label="语音播报这条回复" title="播放/停止">${icon('speak')}</button>`
+    : '';
+  return `<div class="message-block ${message.role === 'user' ? 'user' : 'assistant'}" data-message-id="${escapeHtml(message.id)}"><div class="bubble ${message.role === 'user' ? 'user' : ''}${message.status === 'pending' ? ' streaming' : ''}${message.status === 'error' ? ' bubble-error' : ''}">${presentation ? `<span class="response-label ${presentation.tone}">${presentation.icon} ${presentation.label}</span>` : ''}${contentHtml(message.content)}${speakButton}</div>${confirmationHtml(message.confirmation)}${clarificationHtml(message.clarification)}${taskHtml(message.task)}${receiptHtml(message.receipt, devices)}${realTimeHtml(message.realtime)}${errorHtml(message.error, message.responseType)}${sourcesHtml(message.sources, message.sourceMode)}</div>`;
 }
 
 export function messageSignature(message) {

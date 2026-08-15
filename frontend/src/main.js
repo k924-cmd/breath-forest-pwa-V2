@@ -1,30 +1,29 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-11';
-import { icon } from './components/icons.js?v=20260808-11';
-import { homePage } from './pages/home.js?v=20260808-11';
-import { devicesPage } from './pages/devices.js?v=20260808-11';
-import { chatPage } from './pages/chat.js?v=20260808-11';
-import { profilePage } from './pages/profile.js?v=20260808-11';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-11';
-import { loginPage } from './components/login.js?v=20260808-11';
-import { login, isLoggedIn } from './auth/auth.js?v=20260808-11';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-11';
-import { fetchWeather } from './services/weather-service.js?v=20260808-11';
-import { toggleMockDevice } from './services/device-service.js?v=20260808-11';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-11';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-11';
-import { escapeHtml } from './utils/html.js?v=20260808-11';
-import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-11';
-import { initFeedback } from './utils/feedback.js?v=20260808-11';
-import { transcribeAudio } from './services/asr-service.js?v=20260808-11';
-import { runSingingEasterEgg } from './services/easter-service.js?v=20260808-11';
-import { synthesizeSpeech } from './services/tts-service.js?v=20260808-11';
-import { playBase64Audio, unlockAudio } from './utils/play-audio.js?v=20260808-11';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-11';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-13';
+import { icon } from './components/icons.js?v=20260808-13';
+import { homePage } from './pages/home.js?v=20260808-13';
+import { devicesPage } from './pages/devices.js?v=20260808-13';
+import { chatPage } from './pages/chat.js?v=20260808-13';
+import { profilePage } from './pages/profile.js?v=20260808-13';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-13';
+import { loginPage } from './components/login.js?v=20260808-13';
+import { login, isLoggedIn } from './auth/auth.js?v=20260808-13';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-13';
+import { fetchWeather } from './services/weather-service.js?v=20260808-13';
+import { toggleMockDevice } from './services/device-service.js?v=20260808-13';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-13';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-13';
+import { escapeHtml } from './utils/html.js?v=20260808-13';
+import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-13';
+import { initFeedback } from './utils/feedback.js?v=20260808-13';
+import { transcribeAudio } from './services/asr-service.js?v=20260808-13';
+import { synthesizeSpeech } from './services/tts-service.js?v=20260808-13';
+import { playBase64Interruptible, stopPlayback, unlockAudio } from './utils/play-audio.js?v=20260808-13';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-13';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260808-11';
+} from './presentation.js?v=20260808-13';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
@@ -41,6 +40,11 @@ const PRESS_MOVE_TOLERANCE = 10;
 
 // 全局按键反馈：事件委托，幂等，设置实时从 state.settings 读取
 initFeedback(() => state.settings);
+
+// 语音播报：模块级当前播放引用，新播放自动打断旧播放
+let currentSpeakToken = null;
+let currentSpeakMsgId = null;
+let speakToastFired = false;
 
 function tabs() {
   const devicesEntry = state.tab === 'home' ? '<button class="tabs-devices" data-tab="devices">全部设备 <small>›</small></button>' : '';
@@ -437,16 +441,62 @@ function setStreamingUi(isStreaming) {
   if (submit) submit.disabled = isStreaming;
 }
 
-// 正常对话回复的语音播报：仅在「语音播报」开关开启时合成并播放，失败静默降级（文字回复已展示）。
-async function speakReply(content) {
+// 正常对话回复的语音播报：仅在「语音播报」开关开启时合成并播放。
+// fire-and-forget：不阻塞输入（文字回复已展示）；播放前自动打断上一条。
+// 合成失败首次 toast 一次（不再完全静默），成功播放后重置信令。
+async function speakReply(msgId, content) {
   if (state.settings.speak !== true) return;
   if (typeof content !== 'string' || !content.trim()) return;
   const result = await synthesizeSpeech(content);
-  if (!result?.available || !result.audioBase64) return;
-  await playBase64Audio(result.audioBase64, result.format);
+  if (!result?.available || !result.audioBase64) {
+    if (!speakToastFired) {
+      speakToastFired = true;
+      toast('语音播报暂不可用，请稍后再试');
+    }
+    return;
+  }
+  const token = playBase64Interruptible(result.audioBase64, result.format);
+  if (token != null) {
+    currentSpeakToken = token;
+    currentSpeakMsgId = msgId;
+  }
+  speakToastFired = false;
 }
 
-async function sendMessage(text, continuation, options = {}) {
+// 消息小喇叭：点击播放该条回复；正在播放时再点停止。
+async function toggleSpeak(msgId, text) {
+  if (currentSpeakMsgId === msgId && currentSpeakToken != null) {
+    stopPlayback(currentSpeakToken);
+    currentSpeakToken = null;
+    currentSpeakMsgId = null;
+    return;
+  }
+  if (state.settings.speak !== true) {
+    toast('语音播报已关闭，可在「我的」页开启');
+    return;
+  }
+  if (typeof text !== 'string' || !text.trim()) return;
+  unlockAudio();
+  stopPlayback(currentSpeakToken);
+  currentSpeakToken = null;
+  currentSpeakMsgId = msgId;
+  const result = await synthesizeSpeech(text);
+  if (!result?.available || !result.audioBase64) {
+    if (currentSpeakMsgId !== msgId) return;
+    currentSpeakMsgId = null;
+    if (!speakToastFired) {
+      speakToastFired = true;
+      toast('语音播报暂不可用，请稍后再试');
+    }
+    return;
+  }
+  if (currentSpeakMsgId !== msgId) return;
+  const token = playBase64Interruptible(result.audioBase64, result.format);
+  if (token != null) currentSpeakToken = token;
+  speakToastFired = false;
+}
+
+async function sendMessage(text, continuation) {
   if (state.isStreaming || selectionMode) return;
   const clientMessageId = crypto.randomUUID?.() || `client-message-${Date.now()}-${Math.random()}`;
   addMessage('user', text, { continuation, id: clientMessageId });
@@ -458,28 +508,6 @@ async function sendMessage(text, continuation, options = {}) {
   bind();
   scrollChat(true);
   try {
-    // 唱歌彩蛋：语音/文字发送都先尝试一次；识别为唱歌则展示歌词回复并播放演唱。
-    if (options.tryEasterEgg) {
-      const easter = await runSingingEasterEgg(text);
-      if (easter.available === true) {
-        pending.status = 'complete';
-        pending.responseType = 'chat';
-        pending.content = easter.replyText;
-        pending.sourceMode = 'backend';
-        pending.sources = [{ type: 'tts', observedAt: new Date().toISOString(), referenceId: easter.voice || 'mimo' }];
-        pending.audio = { base64: easter.audioBase64, format: easter.format, songName: easter.songName, continuation: easter.continuation };
-        renderMessages();
-        bind();
-        scrollChat(true);
-        saveState();
-        if (easter.audioBase64) {
-          const played = await playBase64Audio(easter.audioBase64, easter.format);
-          if (played) toast('Luna 努力演唱中，跑调勿怪～');
-          else toast('演唱已生成，但当前浏览器无法自动播放');
-        }
-        return;
-      }
-    }
     const response = await sendConversationMessage(text, { continuation, city: state.profile?.city || '', clientMessageId });
     if (response.transportMode === 'ui_mock') {
       await useUiMockSnapshot();
@@ -491,7 +519,8 @@ async function sendMessage(text, continuation, options = {}) {
     renderMessages();
     bind();
     scrollChat(true);
-    await speakReply(pending.content);
+    // fire-and-forget：TTS 合成/播放不阻塞输入；自动打断上一条播报
+    speakReply(pending.id, pending.content);
   } catch {
     await useUiMockSnapshot();
     pending.content = '本地 UI Mock / 未连接后端：暂时无法生成演示回复，请稍后再试。';
@@ -641,14 +670,22 @@ function bind() {
       id: button.dataset.continuationId
     });
   });
+  document.querySelectorAll('[data-action="speak"]').forEach(button => {
+    button.onclick = () => {
+      const block = button.closest('.message-block');
+      const msgId = block?.dataset.messageId;
+      if (!msgId) return;
+      toggleSpeak(msgId, button.dataset.text || '');
+    };
+  });
   document.querySelector('#chat-form')?.addEventListener('submit', event => {
     event.preventDefault();
     const input = document.querySelector('#chat-input');
     const text = input.value.trim();
     if (text) {
-      // 提交是用户手势：解锁 AudioContext，彩蛋音频稍后返回时可自动播放
+      // 提交是用户手势：解锁 AudioContext，语音播报返回后才能自动播放
       unlockAudio();
-      sendMessage(text, undefined, { tryEasterEgg: true });
+      sendMessage(text, undefined);
       input.value = '';
     }
   });
@@ -942,9 +979,9 @@ function bindVoiceConfirmActions() {
         state.tab = 'chat';
         render();
       }
-      // 用户点击"发送"是可靠手势：先解锁 AudioContext，彩蛋音频稍后返回时才能自动播放
+      // 用户点击"发送"是可靠手势：先解锁 AudioContext，语音播报稍后返回时才能自动播放
       unlockAudio();
-      sendMessage(text, undefined, { tryEasterEgg: true });
+      sendMessage(text, undefined);
     };
   });
   document.querySelectorAll('.voice-confirm-modal [data-action="close"]').forEach(button => {

@@ -38,7 +38,6 @@ export class AssistantService {
     this.realtime = dependencies.realtime ?? null;
     this.asr = dependencies.asr ?? null;
     this.tts = dependencies.tts ?? null;
-    this.easterEgg = dependencies.easterEgg ?? null;
   }
 
   async sendMessage(request, transport = {}) {
@@ -239,28 +238,6 @@ export class AssistantService {
       voice: result.voice ?? null,
       referenceId: result.referenceId ?? "mimo",
       observedAt: result.observedAt,
-    };
-  }
-
-  async runEasterEgg(userText) {
-    if (!this.easterEgg?.available) {
-      return { available: false, reason: "easter_egg_unavailable" };
-    }
-    let result;
-    try {
-      result = await this.easterEgg.run(userText);
-    } catch {
-      result = null;
-    }
-    if (!result) return { available: false, reason: "not_singing_or_failed" };
-    return {
-      available: true,
-      songName: result.songName ?? null,
-      continuation: result.continuation,
-      audio: result.audio,
-      format: result.format ?? "wav",
-      voice: result.voice ?? null,
-      replyText: result.replyText,
     };
   }
 

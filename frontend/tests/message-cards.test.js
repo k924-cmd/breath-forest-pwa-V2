@@ -123,3 +123,16 @@ test('DEP-005 消息块带稳定 ID，签名仅反映渲染相关字段', () => 
   assert.notEqual(messageSignature(base), messageSignature(assistantMessage({ status: 'error' })));
   assert.notEqual(messageSignature(base), messageSignature(assistantMessage({ responseType: 'knowledge' })));
 });
+
+test('语音播报小喇叭：完成态 assistant 消息渲染播报按钮，其余不渲染', () => {
+  const html = structuredMessageHtml(assistantMessage(), []);
+  assert.match(html, /data-action="speak"/);
+  assert.match(html, /class="speak-btn"/);
+  assert.match(html, /aria-label="语音播报这条回复"/);
+  // 未完成（pending）不渲染小喇叭
+  const pending = structuredMessageHtml(assistantMessage({ status: 'pending', content: 'Luna 正在整理回复' }), []);
+  assert.doesNotMatch(pending, /data-action="speak"/);
+  // 用户消息不渲染小喇叭
+  const user = structuredMessageHtml({ ...assistantMessage(), role: 'user' }, []);
+  assert.doesNotMatch(user, /data-action="speak"/);
+});
