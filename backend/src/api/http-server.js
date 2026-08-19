@@ -87,7 +87,7 @@ export function createHttpAssistantServer(options = {}) {
 
       const pathname = parsePathname(request.url);
       const isAuthRoute = pathname === "/v1/auth/login" || pathname === "/v1/auth/logout";
-      const isPublicSnapshot = pathname === "/v1/health" || pathname === "/v1/bootstrap";
+      const isPublicSnapshot = pathname === "/v1/health" || pathname === "/v1/bootstrap" || pathname === "/v1/kws/check";
       if (!isAuthRoute && !isPublicSnapshot && adminPasswordHash) {
         const bearer = String(request.headers.authorization ?? "");
         const token = bearer.startsWith("Bearer ") ? bearer.slice(7) : "";

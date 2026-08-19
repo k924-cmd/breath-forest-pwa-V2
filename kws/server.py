@@ -44,24 +44,29 @@ def load_model():
     return _model
 
 
-def decode_pcm16(raw: bytes) -> bytes:
-    """请求体是 PCM16（Node 端由 MediaRecorder 转出）。原样返回给 FunASR（wav 头可缺）。"""
-    return raw
-
-
 def check_wake_word(raw: bytes):
-    """对一段 16kHz 音频做唤醒检测，返回 FunASR 结果。"""
+    """对一段音频做唤醒检测，返回 FunASR 结果。
+
+    注意：funasr 1.4.2 的 FsmnKWS.inference 无条件访问 self.writer，
+    但只在 output_dir 非空时创建——必须传 output_dir，否则报
+    'NoneType' object has no attribute 'token_list' / writer 缺失。
+    """
     model = load_model()
-    res = model.generate(input=raw, cache={}, kwargs={"frontend_conf": {"fs": 16000, "resample_rate": 16000}})
-    # FunASR KWS 结果形如 [{'key': '小云小云', 'key_score': 0.92, ...}]
+    res = model.generate(
+        input=raw,
+        cache={},
+        output_dir="/tmp/kws_out",
+    )
+    # 结果形如 [{'key': '...', 'text': 'detected 小云小云 0.9954...'}]
     detected = False
     score = None
     for item in res or []:
         if not isinstance(item, dict):
             continue
-        if item.get("key"):
+        text = item.get("text") or ""
+        if text.startswith("detected"):
             detected = True
-            score = item.get("key_score")
+            score = float(text.split()[-1]) if len(text.split()) >= 3 else None
             break
     return {"detected": detected, "keyword": KEYWORD, "score": score, "source": "python-kws"}
 
