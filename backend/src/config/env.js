@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 
-const LOADED_PREFIXES = ["DEEPSEEK_", "TAVILY_", "DASHSCOPE_", "MIMO_"];
-// 部署配置键：认证 / 限流 / CORS，不进列表就加载不了 .env，导致按文档配置无效。
-const LOADED_KEYS = new Set(["API_KEY", "ADMIN_PASSWORD_HASH", "RATE_LIMIT_ENABLED", "RATE_LIMIT_PER_MINUTE", "HOST", "PORT", "ALLOWED_ORIGINS", "ALLOW_ORIGINS_WILDCARD", "SQLITE_ENABLED", "SQLITE_DB_PATH"]);
+const LOADED_PREFIXES = ["DEEPSEEK_", "TAVILY_", "DASHSCOPE_", "MIMO_", "KWS_"];
+// 部署配置键：认证 / 限流 / CORS / KWS 服务地址，不进列表就加载不了 .env，导致按文档配置无效。
+const LOADED_KEYS = new Set(["API_KEY", "ADMIN_PASSWORD_HASH", "RATE_LIMIT_ENABLED", "RATE_LIMIT_PER_MINUTE", "HOST", "PORT", "ALLOWED_ORIGINS", "ALLOW_ORIGINS_WILDCARD", "SQLITE_ENABLED", "SQLITE_DB_PATH", "KWS_SERVICE_URL"]);
 
 /**
  * Minimal local .env loader. Only whitelisted prefixes/keys are loaded, existing

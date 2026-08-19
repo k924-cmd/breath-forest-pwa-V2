@@ -404,6 +404,47 @@ test("POST /v1/asr 空音频与超限音频返回契约错误", async (context) 
   assert.doesNotMatch(JSON.stringify([empty.body, oversized.body]), /stack|node:|at\s+\w+/i);
 });
 
+test("POST /v1/kws/check 命中唤醒词返回 detected=true", async (context) => {
+  const assistant = {
+    getBootstrap: async () => ({ contractVersion: "1.0.0", mode: "local_mock" }),
+    sendMessage: async () => ({}),
+    checkWakeWord: async () => ({ detected: true, keyword: "小云小云", score: 0.92, latencyMs: 180, source: "python-kws" }),
+  };
+  const service = createHttpAssistantServer({ assistant, port: 0 });
+  const address = await service.start();
+  context.after(() => service.close());
+
+  const { response, body } = await jsonResponse(`${address.url}/v1/kws/check`, {
+    method: "POST",
+    headers: { "Content-Type": "audio/webm" },
+    body: Buffer.from([128, 128, 128, 128]),
+  });
+  assert.equal(response.status, 200);
+  assert.equal(body.detected, true);
+  assert.equal(body.keyword, "小云小云");
+  assert.equal(body.score, 0.92);
+});
+
+test("POST /v1/kws/check 未命中返回 detected=false", async (context) => {
+  const assistant = {
+    getBootstrap: async () => ({ contractVersion: "1.0.0", mode: "local_mock" }),
+    sendMessage: async () => ({}),
+    checkWakeWord: async () => ({ detected: false, keyword: "小云小云", source: "fallback" }),
+  };
+  const service = createHttpAssistantServer({ assistant, port: 0 });
+  const address = await service.start();
+  context.after(() => service.close());
+
+  const { response, body } = await jsonResponse(`${address.url}/v1/kws/check`, {
+    method: "POST",
+    headers: { "Content-Type": "audio/webm" },
+    body: Buffer.from([128, 128, 128, 128]),
+  });
+  assert.equal(response.status, 200);
+  assert.equal(body.detected, false);
+  assert.equal(body.source, "fallback");
+});
+
 test("POST /v1/tts/speak 正常语音合成返回音频", async (context) => {
   const assistant = {
     getBootstrap: async () => ({ contractVersion: "1.0.0", mode: "local_mock" }),
@@ -480,4 +521,86 @@ test("POST /v1/tts/speak 校验请求体", async (context) => {
     body: JSON.stringify({ text: "x", voice: "  " }),
   });
   assert.equal(badVoice.response.status, 400);
+});
+
+test("POST /v1/tts/stream 逐句 SSE 推送分块", async (context) => {
+  const assistant = {
+    getBootstrap: async () => ({ contractVersion: "1.0.0", mode: "local_mock" }),
+    sendMessage: async () => ({}),
+    synthesizeSpeechStreaming: async (text, callbacks) => {
+      const sentences = ["第一句。", "第二句！", "第三句"];
+      for (let i = 0; i < sentences.length; i += 1) {
+        callbacks.onChunk({
+          index: i,
+          total: sentences.length,
+          done: i === sentences.length - 1,
+          audioBase64: Buffer.from(`audio-${i}`).toString("base64"),
+          format: "wav",
+        });
+      }
+      return { available: true };
+    },
+  };
+  const service = createHttpAssistantServer({ assistant, port: 0 });
+  const address = await service.start();
+  context.after(() => service.close());
+
+  const response = await fetch(`${address.url}/v1/tts/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "第一句。第二句！第三句" }),
+  });
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type"), /text\/event-stream/);
+  const text = await response.text();
+  const dataLines = text.split("\n").filter(line => line.startsWith("data:"));
+  assert.ok(dataLines.length >= 3, "应至少有 3 个 data: 事件");
+  const chunks = dataLines.map(line => JSON.parse(line.slice(5).trim())).filter(c => c.index !== undefined);
+  assert.equal(chunks.length, 3, "应有 3 个音频分块");
+  assert.equal(chunks[0].index, 0);
+  assert.equal(chunks[0].done, false);
+  assert.equal(chunks[2].done, true, "最后一个分块 done=true");
+});
+
+test("POST /v1/tts/stream 全部分块失败时返回 503", async (context) => {
+  const assistant = {
+    getBootstrap: async () => ({ contractVersion: "1.0.0", mode: "local_mock" }),
+    sendMessage: async () => ({}),
+    synthesizeSpeechStreaming: async (text, callbacks) => {
+      callbacks.onChunk({ index: 0, total: 1, done: true, failed: true });
+      return { available: false };
+    },
+  };
+  const service = createHttpAssistantServer({ assistant, port: 0 });
+  const address = await service.start();
+  context.after(() => service.close());
+
+  const response = await fetch(`${address.url}/v1/tts/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "你好" }),
+  });
+  assert.equal(response.status, 200);
+  const text = await response.text();
+  assert.match(text, /SERVICE_UNAVAILABLE/, "全失败应推送错误事件");
+});
+
+test("POST /v1/tts/stream 后端不支持流式时返回错误", async (context) => {
+  const assistant = {
+    getBootstrap: async () => ({ contractVersion: "1.0.0", mode: "local_mock" }),
+    sendMessage: async () => ({}),
+    // 未提供 synthesizeSpeechStreaming → 走 hasStreaming=false 分支
+  };
+  const service = createHttpAssistantServer({ assistant, port: 0 });
+  const address = await service.start();
+  context.after(() => service.close());
+
+  const response = await fetch(`${address.url}/v1/tts/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "你好" }),
+  });
+  assert.equal(response.status, 200);
+  const text = await response.text();
+  assert.match(text, /SERVICE_UNAVAILABLE/);
 });

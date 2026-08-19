@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""「小云小云」语音唤醒 HTTP 服务（FunASR cFSMN KWS）。
+
+接收 Node 后端 /v1/kws/check 转发的 16kHz 单声道音频字节，用
+iic/speech_charctc_kws_phone-xiaoyun 模型检测唤醒词「小云小云」，
+返回 {detected, keyword, score, latency_ms}。
+
+零第三方 HTTP 依赖（stdlib http.server）；FunASR 首次请求时惰性加载模型，
+避免服务进程启动即因模型下载/初始化失败而退出。
+
+运行：python3 kws/server.py            # 默认 127.0.0.1:8901
+      KWS_HOST=0.0.0.0 KWS_PORT=8901 python3 kws/server.py
+"""
+
+import io
+import json
+import time
+import wave
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http import HTTPStatus
+
+MODEL_ID = "iic/speech_charctc_kws_phone-xiaoyun"
+KEYWORD = "小云小云"
+HOST = "127.0.0.1"
+PORT = 8901
+
+_model = None
+_model_loaded = False
+
+
+def load_model():
+    """惰性加载 FunASR 模型；失败抛异常由请求层降级为 503。"""
+    global _model, _model_loaded
+    if _model_loaded:
+        return _model
+    from funasr import AutoModel
+    _model = AutoModel(
+        model=MODEL_ID,
+        keywords=KEYWORD,
+        device="cpu",
+    )
+    _model_loaded = True
+    return _model
+
+
+def decode_pcm16(raw: bytes) -> bytes:
+    """请求体是 PCM16（Node 端由 MediaRecorder 转出）。原样返回给 FunASR（wav 头可缺）。"""
+    return raw
+
+
+def check_wake_word(raw: bytes):
+    """对一段 16kHz 音频做唤醒检测，返回 FunASR 结果。"""
+    model = load_model()
+    res = model.generate(input=raw, cache={}, kwargs={"frontend_conf": {"fs": 16000, "resample_rate": 16000}})
+    # FunASR KWS 结果形如 [{'key': '小云小云', 'key_score': 0.92, ...}]
+    detected = False
+    score = None
+    for item in res or []:
+        if not isinstance(item, dict):
+            continue
+        if item.get("key"):
+            detected = True
+            score = item.get("key_score")
+            break
+    return {"detected": detected, "keyword": KEYWORD, "score": score, "source": "python-kws"}
+
+
+class KwsHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        if self.path != "/kws":
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        raw = self.rfile.read(length) if length > 0 else b""
+        if not raw:
+            self._json(HTTPStatus.BAD_REQUEST, {"error": "empty body"})
+            return
+        try:
+            t0 = time.time()
+            result = check_wake_word(raw)
+            result["latency_ms"] = int((time.time() - t0) * 1000)
+            self._json(HTTPStatus.OK, result)
+        except Exception as exc:  # noqa: BLE001 - 服务边界：模型加载/推理失败 → 503
+            self._json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": str(exc)})
+
+    def do_GET(self):
+        if self.path == "/health":
+            self._json(HTTPStatus.OK, {"status": "ok", "keyword": KEYWORD, "model": MODEL_ID})
+            return
+        self.send_error(HTTPStatus.NOT_FOUND)
+
+    def _json(self, status, payload):
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, fmt, *args):  # 静默，避免刷屏
+        pass
+
+
+def main():
+    import os
+    host = os.environ.get("KWS_HOST", HOST)
+    port = int(os.environ.get("KWS_PORT", PORT))
+    server = ThreadingHTTPServer((host, port), KwsHandler)
+    print(f"KWS 唤醒服务监听 {host}:{port}（模型 {MODEL_ID}，唤醒词「{KEYWORD}」）")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        server.shutdown()
+
+
+if __name__ == "__main__":
+    main()

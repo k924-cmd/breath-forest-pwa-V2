@@ -59,3 +59,9 @@ export function getAuthHeader() {
 export const CONTRACT_VERSION = '1.0.0';
 export const CONVERSATION_STORAGE_KEY = 'breathForestConversationIdV1';
 export const ADMIN_SESSION_KEY = 'breathForestAdminSessionV3';
+
+// 语音唤醒：关键词「小云小云」由后端 KWS 服务检测（FunASR cFSMN 模型，
+// 本地不可用时后端回落到模拟检测器）。前端只需配置关键词与轮询周期。
+export const WAKE_KEYWORD_LABEL = '小云小云';
+export const WAKE_POLL_INTERVAL_MS = 500;
+export const WAKE_WINDOW_MS = 1500;

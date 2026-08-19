@@ -1,11 +1,12 @@
-const CACHE_NAME = 'breath-forest-ui-v39';
+const CACHE_NAME = 'breath-forest-ui-v42';
 const CORE_ASSETS = [
-  './', './index.html', './styles.css?v=20260808-13', './manifest.webmanifest', './src/main.js?v=20260808-13',
-  './src/config.js?v=20260808-13', './src/app/state.js?v=20260808-13', './src/components/icons.js?v=20260808-13', './src/components/message-cards.js?v=20260808-13', './src/presentation.js?v=20260808-13', './src/utils/html.js?v=20260808-13',
-  './src/pages/home.js?v=20260808-13', './src/pages/devices.js?v=20260808-13', './src/pages/chat.js?v=20260808-13', './src/pages/profile.js?v=20260808-13',
-  './src/services/conversation-service.js?v=20260808-13', './src/services/device-service.js?v=20260808-13', './src/services/environment-service.js?v=20260808-13',
-  './src/services/asr-service.js?v=20260808-13', './src/services/tts-service.js?v=20260808-13', './src/utils/audio.js?v=20260808-13', './src/utils/feedback.js?v=20260808-13', './src/utils/play-audio.js?v=20260808-13',
-  './src/mocks/conversation.js?v=20260808-13', './src/mocks/devices.js?v=20260808-13', './src/mocks/environment.js?v=20260808-13',
+  './', './index.html', './styles.css?v=20260808-16', './manifest.webmanifest', './src/main.js?v=20260808-16',
+  './src/config.js?v=20260808-16', './src/app/state.js?v=20260808-16', './src/components/icons.js?v=20260808-16', './src/components/message-cards.js?v=20260808-16', './src/presentation.js?v=20260808-16', './src/utils/html.js?v=20260808-16',
+  './src/pages/home.js?v=20260808-16', './src/pages/devices.js?v=20260808-16', './src/pages/chat.js?v=20260808-16', './src/pages/profile.js?v=20260808-16',
+  './src/wake/wake-service.js?v=20260808-16',
+  './src/services/conversation-service.js?v=20260808-16', './src/services/device-service.js?v=20260808-16', './src/services/environment-service.js?v=20260808-16',
+  './src/services/asr-service.js?v=20260808-16', './src/services/tts-service.js?v=20260808-16', './src/utils/audio.js?v=20260808-16', './src/utils/feedback.js?v=20260808-16', './src/utils/play-audio.js?v=20260808-16', './src/utils/mic-service.js?v=20260808-16', './src/utils/stream-playback.js?v=20260808-16',
+  './src/mocks/conversation.js?v=20260808-16', './src/mocks/devices.js?v=20260808-16', './src/mocks/environment.js?v=20260808-16',
   './vendor/lottie-web.js', './assets/robot.json', './assets/start-robot.json', './assets/ai-flow.json',
   './icons/app-512.png', './icons/app-192.png', './icons/apple-icon.png',
   './assets/breath-forest-living-room.webp',

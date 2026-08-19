@@ -1,29 +1,29 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-13';
-import { icon } from './components/icons.js?v=20260808-13';
-import { homePage } from './pages/home.js?v=20260808-13';
-import { devicesPage } from './pages/devices.js?v=20260808-13';
-import { chatPage } from './pages/chat.js?v=20260808-13';
-import { profilePage } from './pages/profile.js?v=20260808-13';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-13';
-import { loginPage } from './components/login.js?v=20260808-13';
-import { login, isLoggedIn } from './auth/auth.js?v=20260808-13';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-13';
-import { fetchWeather } from './services/weather-service.js?v=20260808-13';
-import { toggleMockDevice } from './services/device-service.js?v=20260808-13';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-13';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-13';
-import { escapeHtml } from './utils/html.js?v=20260808-13';
-import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-13';
-import { initFeedback } from './utils/feedback.js?v=20260808-13';
-import { transcribeAudio } from './services/asr-service.js?v=20260808-13';
-import { synthesizeSpeech } from './services/tts-service.js?v=20260808-13';
-import { playBase64Interruptible, stopPlayback, unlockAudio } from './utils/play-audio.js?v=20260808-13';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-13';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-16';
+import { icon } from './components/icons.js?v=20260808-16';
+import { homePage } from './pages/home.js?v=20260808-16';
+import { devicesPage } from './pages/devices.js?v=20260808-16';
+import { chatPage } from './pages/chat.js?v=20260808-16';
+import { profilePage } from './pages/profile.js?v=20260808-16';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-16';
+import { loginPage } from './components/login.js?v=20260808-16';
+import { login, isLoggedIn } from './auth/auth.js?v=20260808-16';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-16';
+import { fetchWeather } from './services/weather-service.js?v=20260808-16';
+import { toggleMockDevice } from './services/device-service.js?v=20260808-16';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-16';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-16';
+import { escapeHtml } from './utils/html.js?v=20260808-16';
+import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-16';
+import { initFeedback } from './utils/feedback.js?v=20260808-16';
+import { transcribeAudio } from './services/asr-service.js?v=20260808-16';
+import { synthesizeSpeech } from './services/tts-service.js?v=20260808-16';
+import { playBase64Interruptible, stopPlayback, unlockAudio } from './utils/play-audio.js?v=20260808-16';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-16';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260808-13';
+} from './presentation.js?v=20260808-16';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
@@ -447,18 +447,31 @@ function setStreamingUi(isStreaming) {
 async function speakReply(msgId, content) {
   if (state.settings.speak !== true) return;
   if (typeof content !== 'string' || !content.trim()) return;
-  const result = await synthesizeSpeech(content);
-  if (!result?.available || !result.audioBase64) {
+  // 流式播报：后端逐句合成，前端逐句播放，缩短首字延迟；任何一步失败回落文本回复。
+  const { synthesizeSpeechStream } = await import('./services/tts-service.js?v=20260808-16');
+  const { pushStreamChunk, stopStreamPlayback } = await import('./utils/stream-playback.js?v=20260808-16');
+  stopStreamPlayback(currentSpeakToken);
+  currentSpeakToken = null;
+  currentSpeakMsgId = msgId;
+  let anyChunk = false;
+  const started = await synthesizeSpeechStream(content, {
+    onChunk: chunk => {
+      if (chunk?.failed) return;
+      if (chunk?.audioBase64) {
+        anyChunk = true;
+        const token = pushStreamChunk(chunk.audioBase64, chunk.format);
+        if (token != null) currentSpeakToken = token;
+      }
+    }
+  });
+  if (!started || !anyChunk) {
+    if (currentSpeakMsgId !== msgId) return;
+    currentSpeakMsgId = null;
     if (!speakToastFired) {
       speakToastFired = true;
       toast('语音播报暂不可用，请稍后再试');
     }
     return;
-  }
-  const token = playBase64Interruptible(result.audioBase64, result.format);
-  if (token != null) {
-    currentSpeakToken = token;
-    currentSpeakMsgId = msgId;
   }
   speakToastFired = false;
 }
@@ -494,6 +507,64 @@ async function toggleSpeak(msgId, text) {
   const token = playBase64Interruptible(result.audioBase64, result.format);
   if (token != null) currentSpeakToken = token;
   speakToastFired = false;
+}
+
+// 语音唤醒「小云小云」：开关开启后持续监听；命中后进入录音弹窗 → 转写 → 填充聊天。
+let wakeRunning = false;
+async function startWakeWord() {
+  const { startWake, wakeWordConfigured, WAKE_KEYWORD_LABEL } = await import('./wake/wake-service.js?v=20260808-16');
+  if (!wakeWordConfigured()) {
+    toast('唤醒词未配置');
+    return;
+  }
+  const result = await startWake({ onWake: onWakeTriggered });
+  if (!result.ok) {
+    toast(result.message || '唤醒不可用');
+    return;
+  }
+  wakeRunning = true;
+  toast(`语音唤醒已开启，说「${WAKE_KEYWORD_LABEL}」试试`);
+}
+
+async function stopWakeWord() {
+  const { stopWake } = await import('./wake/wake-service.js?v=20260808-16');
+  wakeRunning = false;
+  await stopWake();
+}
+
+// 命中「小云小云」：复用语音录音弹窗流程，录完转写 → 跳 chat 页填充。
+function onWakeTriggered() {
+  if (!state.settings.wakeWord || wakeRunning === false) return;
+  if (state.isStreaming) return;
+  unlockAudio();
+  const modalId = showVoiceConfirmModal(null, 'recording');
+  const recorder = new AudioRecorder();
+  recorder.__voiceModalId = modalId;
+  const stopTimer = setTimeout(() => finishWakeRecording(recorder), MAX_RECORD_MS);
+  requestMicStreamForWake(recorder).catch(() => {
+    clearTimeout(stopTimer);
+    const modalRoot = document.querySelector('#modal-root');
+    if (modalRoot && modalRoot.innerHTML) modalRoot.innerHTML = '';
+    toast('唤醒录音失败');
+  });
+}
+
+async function requestMicStreamForWake(recorder) {
+  const { requestMicStream } = await import('./utils/mic-service.js?v=20260808-16');
+  const stream = await requestMicStream();
+  await recorder.start({ stream });
+}
+
+async function finishWakeRecording(recorder) {
+  const { blob, mimeType, error } = await recorder.stop();
+  if (error || !blob) {
+    toast(error?.message || '未识别到语音');
+    return;
+  }
+  const modalId = recorder.__voiceModalId || showVoiceConfirmModal(null, 'loading');
+  updateVoiceConfirmModal(modalId, null, null, 'loading');
+  const result = await transcribeAudio(blob);
+  updateVoiceConfirmModal(modalId, result.text, result.error || null);
 }
 
 async function sendMessage(text, continuation) {
@@ -639,9 +710,13 @@ function bind() {
   document.querySelectorAll('[data-action="toggle-feedback"]').forEach(input => {
     input.onchange = () => {
       const key = input.dataset.feedbackKey;
-      if (key === 'sound' || key === 'vibrate' || key === 'speak') {
+      if (key === 'sound' || key === 'vibrate' || key === 'speak' || key === 'wakeWord') {
         state.settings[key] = input.checked;
         saveState();
+        if (key === 'wakeWord') {
+          if (input.checked) startWakeWord();
+          else stopWakeWord();
+        }
       }
     };
   });
@@ -775,9 +850,21 @@ function bindVoiceButton(button) {
   let recordingStarted = false;
   let recorder = null;
   let stopTimer = null;
+  let prewarmed = false;
   const nav = button.closest('.tabs');
 
   const setVoiceActive = active => nav && nav.classList.toggle('voice-active', active);
+
+  // 短按语音 tab 时预热麦克风权限并持有共享流，首次长按录音不再弹权限。
+  // 静默失败：真正的问题在长按时会再次提示。
+  const prewarmMic = async () => {
+    if (prewarmed) return;
+    prewarmed = true;
+    try {
+      const { requestMicStream } = await import('./utils/mic-service.js?v=20260808-16');
+      await requestMicStream();
+    } catch { /* 忽略 */ }
+  };
 
   const start = async (event) => {
     if (event.cancelable) event.preventDefault();
@@ -793,7 +880,9 @@ function bindVoiceButton(button) {
       recorder = new AudioRecorder();
       recorder.__voiceModalId = modalId;
       try {
-        await recorder.start();
+        const { requestMicStream } = await import('./utils/mic-service.js?v=20260808-16');
+        const stream = await requestMicStream();
+        await recorder.start({ stream });
         recordingStarted = true;
         playDing();
         // 达到上限后自动停止并转写
@@ -841,6 +930,10 @@ function bindVoiceButton(button) {
       // 长按已触发但录音未启动（如权限流程中松手）：清理语音反馈态
       button.classList.remove('recording');
       setVoiceActive(false);
+    } else {
+      // 短按（松手时未达长按阈值）：预热麦克风权限，下次长按录音不再弹权限。
+      // 长按已触发时跳过——recorder 自己持有共享流，避免重复引用导致流永不释放。
+      prewarmMic();
     }
     longPressTriggered = false;
   };

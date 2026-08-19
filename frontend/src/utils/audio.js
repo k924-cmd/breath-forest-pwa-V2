@@ -38,6 +38,8 @@ export class AudioRecorder {
     this.stopPromise = null;
     this.hardCap = null;
     this.error = null;
+    // true 表示本实例自己申请了 stream（非共享流），stop 时必须 stop tracks。
+    this.ownsStream = false;
     // VAD 静音检测：默认开启；开启后检测到连续静音自动停止录音。
     this.enableVad = options.enableVad !== false;
     this.vadThreshold = options.vadThreshold ?? VAD_THRESHOLD;
@@ -52,16 +54,22 @@ export class AudioRecorder {
     return Boolean(this.recorder && this.recorder.state === 'recording');
   }
 
-  async start() {
+  async start(options = {}) {
     if (!supportsRecording()) throw new Error(AUDIO_ERRORS.UNSUPPORTED);
     let stream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (error) {
-      if (error?.name === 'NotAllowedError' || error?.name === 'SecurityError') {
+    if (options.stream) {
+      // 复用外部提供的共享流（由 mic-service 持有），本实例不拥有它。
+      stream = options.stream;
+      this.ownsStream = false;
+    } else {
+      const { requestMicStream } = await import('./mic-service.js?v=20260808-16');
+      try {
+        stream = await requestMicStream();
+      } catch (error) {
+        if (error?.message === '当前浏览器不支持麦克风') throw new Error(AUDIO_ERRORS.UNSUPPORTED);
         throw new Error(AUDIO_ERRORS.PERMISSION_DENIED);
       }
-      throw new Error(AUDIO_ERRORS.PERMISSION_DENIED);
+      this.ownsStream = true;
     }
     this.stream = stream;
     this.mimeType = pickAudioMimeType();
@@ -154,8 +162,14 @@ export class AudioRecorder {
     return this.stopPromise;
   }
 
-  #settle() {
-    this.stream?.getTracks().forEach(track => track.stop());
+  async #settle() {
+    if (this.ownsStream) {
+      this.stream?.getTracks().forEach(track => track.stop());
+    } else {
+      // 共享流：只释放引用，不 stop tracks（由 mic-service 归零后统一停）。
+      const { releaseMicStream } = await import('./mic-service.js?v=20260808-16');
+      if (this.stream) releaseMicStream(this.stream);
+    }
     this.stream = null;
     const blob = new Blob(this.chunks, { type: this.mimeType || 'audio/webm' });
     if (this.error) return { blob: null, mimeType: null, error: this.error };
@@ -163,7 +177,7 @@ export class AudioRecorder {
     return { blob, mimeType: blob.type };
   }
 
-  cancel() {
+  async cancel() {
     this.#stopVad();
     if (this.hardCap) {
       clearTimeout(this.hardCap);
@@ -176,7 +190,12 @@ export class AudioRecorder {
         // 忽略停止时的异常
       }
     }
-    this.stream?.getTracks().forEach(track => track.stop());
+    if (this.ownsStream) {
+      this.stream?.getTracks().forEach(track => track.stop());
+    } else if (this.stream) {
+      const { releaseMicStream } = await import('./mic-service.js?v=20260808-16');
+      releaseMicStream(this.stream);
+    }
     this.stream = null;
   }
 }

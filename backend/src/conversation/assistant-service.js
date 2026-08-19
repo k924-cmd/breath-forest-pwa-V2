@@ -26,6 +26,17 @@ const CHAT_DEGRADED_TEMPLATE = "聊天模型暂时不可用；设备和环境的
 const KNOWLEDGE_URGENT_TEMPLATE = "请先离开可能的风险环境，到空气安全处，并尽快联系当地紧急服务或专业医疗人员。这里不能替代紧急救助或医疗诊断。";
 const COMMON_CITIES = ["北京", "上海", "广州", "深圳", "杭州", "成都", "南京", "武汉", "西安", "重庆"];
 
+// 流式播报分句：按中文句末标点/换行切分，保留标点；去掉首尾空白，跳过空句。
+function splitSentences(text) {
+  const parts = String(text).split(/(?<=[。！？!?；;\n])/u);
+  const sentences = [];
+  for (const part of parts) {
+    const trimmed = part.replace(/^[\s\n]+|[\s\n]+$/g, "").trim();
+    if (trimmed) sentences.push(trimmed);
+  }
+  return sentences;
+}
+
 function composeReplyText(content, healthTopic) {
   return `${content}${AI_DISCLAIMER}${healthTopic ? MEDICAL_DISCLAIMER : ""}`;
 }
@@ -196,6 +207,27 @@ export class AssistantService {
     };
   }
 
+  // 唤醒检测：调 KWS 适配器（真实 Python 服务或本地模拟）。kws 不可用/失败 → 判未命中。
+  async checkWakeWord(audio) {
+    if (!this.kws?.available) return { detected: false, keyword: "小云小云", available: false };
+    if (!(audio instanceof Uint8Array) || audio.length === 0) return { detected: false, keyword: "小云小云", available: true };
+    let result;
+    try {
+      result = await this.kws.check(audio);
+    } catch {
+      result = null;
+    }
+    if (!result) return { detected: false, keyword: "小云小云", available: true, source: this.kws.referenceId ?? null };
+    return {
+      detected: result.detected === true,
+      keyword: result.keyword ?? "小云小云",
+      score: result.score ?? null,
+      latencyMs: result.latencyMs ?? null,
+      available: true,
+      source: result.source ?? this.kws.referenceId ?? null,
+    };
+  }
+
   async transcribeAudio(audio, options = {}) {
     if (!this.asr?.available) return { available: false, reason: "asr_unavailable" };
     if (!(audio instanceof Uint8Array) || audio.length === 0) return { available: false, reason: "asr_empty" };
@@ -239,6 +271,42 @@ export class AssistantService {
       referenceId: result.referenceId ?? "mimo",
       observedAt: result.observedAt,
     };
+  }
+
+  // 流式播报：按句子拆分，逐句合成并回调。任一句失败只跳过该句，不中断整体。
+  // callbacks.onChunk({ index, total, done, audioBase64, format, voice }) —— done 为最后一句。
+  async synthesizeSpeechStreaming(text, callbacks = {}) {
+    if (!this.tts?.available) return { available: false, reason: "tts_unavailable" };
+    const content = typeof text === "string" ? text.trim() : "";
+    if (!content) return { available: false, reason: "tts_empty" };
+    const sentences = splitSentences(content);
+    if (sentences.length === 0) return { available: false, reason: "tts_empty" };
+    const { onChunk = () => {} } = callbacks;
+    let anyPlayed = false;
+    for (let index = 0; index < sentences.length; index += 1) {
+      const sentence = sentences[index];
+      if (!sentence) continue;
+      let result;
+      try {
+        result = await this.tts.synthesize(sentence, { sing: false });
+      } catch {
+        result = null;
+      }
+      if (result && Buffer.isBuffer(result.audio) && result.audio.length) {
+        anyPlayed = true;
+        onChunk({
+          index,
+          total: sentences.length,
+          done: index === sentences.length - 1,
+          audioBase64: Buffer.from(result.audio).toString("base64"),
+          format: result.format ?? "wav",
+          voice: result.voice ?? null,
+        });
+      } else {
+        onChunk({ index, total: sentences.length, done: index === sentences.length - 1, failed: true });
+      }
+    }
+    return { available: anyPlayed };
   }
 
   #validateRequest(request, transport, requestId) {

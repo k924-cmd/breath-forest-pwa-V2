@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { createHttpAssistantServer, DEFAULT_ALLOWED_ORIGINS, DEFAULT_HTTP_HOST, DEFAULT_HTTP_PORT } from "./api/http-server.js";
-import { createLocalAssistant, DeepSeekModelAdapter, SqliteStateRepository, TavilySearchAdapter, DashScopeAsrAdapter, MiMoTtsAdapter } from "./index.js";
+import { createLocalAssistant, DeepSeekModelAdapter, SqliteStateRepository, TavilySearchAdapter, DashScopeAsrAdapter, MiMoTtsAdapter, KwsFallbackAdapter, KwsHttpAdapter } from "./index.js";
 import { loadDotEnvIfPresent } from "./config/env.js";
 
 loadDotEnvIfPresent(fileURLToPath(new URL("../.env", import.meta.url)));
@@ -38,6 +38,14 @@ function resolveTts() {
   return new MiMoTtsAdapter();
 }
 
+// 唤醒检测：配置了 KWS_SERVICE_URL（Python FunASR 服务）且启用 → 真实代理；
+// 否则回落到本地模拟检测器，保证唤醒链路可用（结果不真实）。
+function resolveKws() {
+  const configured = Boolean(process.env.KWS_SERVICE_URL && process.env.KWS_ENABLED);
+  if (configured) return new KwsHttpAdapter();
+  return new KwsFallbackAdapter();
+}
+
 function resolveRepository() {
   const enabled = ["1", "true", "yes", "on"].includes(String(process.env.SQLITE_ENABLED ?? "1").toLowerCase());
   if (!enabled) return null;
@@ -49,8 +57,9 @@ const model = resolveModel();
 const realtime = resolveRealtime();
 const asr = resolveAsr();
 const tts = resolveTts();
+const kws = resolveKws();
 const repository = resolveRepository();
-const assistant = createLocalAssistant({ ...(model ? { model } : {}), ...(realtime ? { realtime } : {}), ...(asr ? { asr } : {}), ...(tts ? { tts } : {}), ...(repository ? { repository } : {}) });
+const assistant = createLocalAssistant({ ...(model ? { model } : {}), ...(realtime ? { realtime } : {}), ...(asr ? { asr } : {}), ...(tts ? { tts } : {}), ...(kws ? { kws } : {}), ...(repository ? { repository } : {}) });
 const service = createHttpAssistantServer({
   assistant, host, port, allowedOrigins, allowOriginWildcard,
   apiKey,

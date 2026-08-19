@@ -148,6 +148,22 @@ export function createHttpAssistantServer(options = {}) {
         }
         throw new HttpTransportError(503, "SERVICE_UNAVAILABLE", "语音识别服务暂不可用，请稍后再试。", true);
       }
+      if (pathname === "/v1/kws/check") {
+        requireMethod(request, "POST");
+        startDeadline(voiceTimeoutMs);
+        const audio = await readRawBody(request, maxAudioBytes);
+        const result = await assistant.checkWakeWord(audio);
+        if (!timedOut && !response.writableEnded) {
+          writeJson(response, 200, {
+            detected: result.detected === true,
+            keyword: result.keyword ?? "小云小云",
+            score: result.score ?? null,
+            latencyMs: result.latencyMs ?? null,
+            source: result.source ?? null,
+          }, corsHeaders);
+        }
+        return;
+      }
       if (pathname === "/v1/tts/speak") {
         requireMethod(request, "POST");
         startDeadline(voiceTimeoutMs);
@@ -167,6 +183,49 @@ export function createHttpAssistantServer(options = {}) {
           return;
         }
         throw new HttpTransportError(503, "SERVICE_UNAVAILABLE", "语音合成服务暂不可用，请稍后再试。", true);
+      }
+      if (pathname === "/v1/tts/stream") {
+        requireMethod(request, "POST");
+        startDeadline(voiceTimeoutMs);
+        requireJsonContentType(request);
+        const body = await readJsonBody(request, maxBodyBytes);
+        validateSpeakBody(body);
+        // SSE 流式播报：逐句合成即推。绕过 writeJson，走独立写路径。
+        response.writeHead(200, {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-store",
+          "Connection": "keep-alive",
+          "X-Accel-Buffering": "no",
+          ...corsHeaders,
+        });
+        const hasStreaming = typeof assistant.synthesizeSpeechStreaming === "function";
+        if (!hasStreaming) {
+          response.end("event: error\ndata: {\"code\":\"SERVICE_UNAVAILABLE\",\"message\":\"流式语音合成不可用\"}\n\n");
+          return;
+        }
+        let streamOk = false;
+        try {
+          const outcome = await assistant.synthesizeSpeechStreaming(body.text, {
+            onChunk: (chunk) => {
+              if (timedOut || response.writableEnded) return;
+              streamOk = streamOk || !chunk.failed;
+              response.write(`data: ${JSON.stringify(chunk)}\n\n`);
+            },
+          });
+          if (outcome?.available === false && !streamOk) {
+            if (!timedOut && !response.writableEnded) {
+              response.end("event: error\ndata: {\"code\":\"SERVICE_UNAVAILABLE\",\"message\":\"语音合成服务暂不可用\"}\n\n");
+            }
+            return;
+          }
+          if (!timedOut && !response.writableEnded) response.end("event: done\ndata: {}\n\n");
+        } catch (error) {
+          if (!timedOut && !response.writableEnded) {
+            response.end(`event: error\ndata: ${JSON.stringify({ code: "INTERNAL_ERROR", message: "流式语音合成失败" })}\n\n`);
+          }
+          if (!streamOk) throw error;
+        }
+        return;
       }
       if (pathname === "/v1/conversations/messages") {
         requireMethod(request, "POST");

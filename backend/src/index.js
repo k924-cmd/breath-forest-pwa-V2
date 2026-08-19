@@ -15,6 +15,7 @@ import { DeepSeekModelAdapter } from "./adapters/deepseek.js";
 import { TavilySearchAdapter } from "./adapters/tavily.js";
 import { DashScopeAsrAdapter } from "./adapters/dashscope-asr.js";
 import { MiMoTtsAdapter } from "./adapters/mimo-tts.js";
+import { KwsFallbackAdapter, KwsHttpAdapter } from "./adapters/kws.js";
 
 export function createLocalAssistant(overrides = {}) {
   const clock = overrides.clock ?? new ManualClock();
@@ -26,6 +27,7 @@ export function createLocalAssistant(overrides = {}) {
     realtime: overrides.realtime ?? null,
     asr: overrides.asr ?? null,
     tts: overrides.tts ?? null,
+    kws: overrides.kws ?? null,
     environment: overrides.environment ?? new FakeEnvironmentAdapter({
       pm25: 18,
       co2: 720,
@@ -52,5 +54,6 @@ export { DeepSeekModelAdapter, DEEPSEEK_DEFAULT_ENDPOINT, DEEPSEEK_DEFAULT_MODEL
 export { TavilySearchAdapter, TAVILY_DEFAULT_ENDPOINT, TAVILY_TIMEOUT_MS_CAP, TAVILY_MAX_RESULTS_DEFAULT } from "./adapters/tavily.js";
 export { DashScopeAsrAdapter, DASHSCOPE_ASR_DEFAULT_ENDPOINT, DASHSCOPE_ASR_DEFAULT_MODEL, DASHSCOPE_ASR_TIMEOUT_MS_CAP } from "./adapters/dashscope-asr.js";
 export { MiMoTtsAdapter, MIMO_TTS_DEFAULT_ENDPOINT, MIMO_TTS_DEFAULT_MODEL, MIMO_TTS_DEFAULT_VOICE, MIMO_TTS_DEFAULT_FORMAT, MIMO_TTS_TIMEOUT_MS_CAP, SINGING_TAG } from "./adapters/mimo-tts.js";
+export { KwsFallbackAdapter, KwsHttpAdapter, KWS_DEFAULT_KEYWORD, KWS_SERVICE_DEFAULT_URL } from "./adapters/kws.js";
 export * from "./devices/registry.js";
 export * from "./core/errors.js";
