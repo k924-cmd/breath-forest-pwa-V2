@@ -4,7 +4,7 @@
 // interruptible like playBase64Interruptible. This cuts perceived latency:
 // the first sentence plays while later ones are still being synthesized.
 
-import { getAudioContext } from './play-audio.js?v=20260808-19';
+import { getAudioContext } from './play-audio.js?v=20260808-20';
 
 let playbackCounter = 0;
 let activeQueue = null;

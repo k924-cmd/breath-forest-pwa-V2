@@ -8,9 +8,9 @@
 // 降级：无麦克风权限 / 后端不可达 / 流不可用 → 置 wakeAvailable=false，
 // 静默停用，不影响录音、播报等其他功能。
 
-import { WAKE_KEYWORD_LABEL, WAKE_POLL_INTERVAL_MS, WAKE_WINDOW_MS } from '../config.js?v=20260808-19';
-import { getApiBaseUrl, getApiKeyHeader, getAuthHeader } from '../services/conversation-service.js?v=20260808-19';
-import { requestMicStream, releaseMicStream } from '../utils/mic-service.js?v=20260808-19';
+import { WAKE_KEYWORD_LABEL, WAKE_POLL_INTERVAL_MS, WAKE_WINDOW_MS } from '../config.js?v=20260808-20';
+import { getApiBaseUrl, getApiKeyHeader, getAuthHeader } from '../services/conversation-service.js?v=20260808-20';
+import { requestMicStream, releaseMicStream } from '../utils/mic-service.js?v=20260808-20';
 
 export { WAKE_KEYWORD_LABEL };
 
@@ -21,6 +21,13 @@ let pollTimer = null;
 let windowTimer = null;
 let wakeAvailable = false;
 let wakeHandler = null;
+let wakeLogger = () => {};
+
+// 注入诊断日志回调（main.js 传 addLog），避免 wake-service 直接依赖 state.js
+// 的顶层副作用（测试环境无 localStorage 会崩）。
+export function setWakeLogger(fn) {
+  wakeLogger = typeof fn === 'function' ? fn : () => {};
+}
 
 export function wakeWordConfigured() {
   return Boolean(WAKE_KEYWORD_LABEL);
@@ -29,16 +36,21 @@ export function wakeWordConfigured() {
 // 开启持续监听：拿共享流 → 持续录音 → 周期 POST 音频块检测。
 export async function startWake({ onWake } = {}) {
   if (onWake) wakeHandler = onWake;
-  if (!wakeWordConfigured()) return { ok: false, message: '未配置唤醒词' };
+  if (!wakeWordConfigured()) {
+    wakeLogger('manual', '唤醒未配置：缺唤醒词标签');
+    return { ok: false, message: '未配置唤醒词' };
+  }
   try {
     if (!streamRef) streamRef = await requestMicStream();
   } catch {
+    wakeLogger('manual', '唤醒失败：无法访问麦克风（权限被拒）');
     return { ok: false, message: '无法访问麦克风' };
   }
   const MediaRecorderCtor = globalThis.MediaRecorder;
   if (!MediaRecorderCtor) {
     releaseMicStream(streamRef);
     streamRef = null;
+    wakeLogger('manual', '唤醒失败：浏览器不支持录音');
     return { ok: false, message: '当前浏览器不支持录音' };
   }
   chunks = [];
@@ -51,10 +63,12 @@ export async function startWake({ onWake } = {}) {
     if (event?.data?.size > 0) chunks.push(event.data);
   };
   recorder.onerror = () => {
+    wakeLogger('manual', '唤醒录音出错，已停止监听');
     stopWake();
   };
   recorder.start(250);
   wakeAvailable = true;
+  wakeLogger('manual', `唤醒监听已启动，每 ${WAKE_POLL_INTERVAL_MS}ms 检测（窗口 ${WAKE_WINDOW_MS}ms），说「${WAKE_KEYWORD_LABEL}」`);
   schedulePoll();
   return { ok: true, message: `唤醒已开启，说「${WAKE_KEYWORD_LABEL}」` };
 }
@@ -87,7 +101,10 @@ function schedulePoll() {
     const blob = new Blob(windowed, { type: recorder.mimeType || 'audio/webm' });
     if (blob.size > 0) {
       const detected = await checkWake(blob);
-      if (detected && wakeHandler) wakeHandler();
+      if (detected) {
+        wakeLogger('ai', `唤醒命中「${WAKE_KEYWORD_LABEL}」`);
+        if (wakeHandler) wakeHandler();
+      }
     }
     schedulePoll();
   }, WAKE_POLL_INTERVAL_MS);
@@ -100,10 +117,14 @@ async function checkWake(blob) {
       headers: { 'Content-Type': blob.type || 'audio/webm', ...getApiKeyHeader(), ...getAuthHeader() },
       body: blob,
     });
-    if (!response || !response.ok) return false;
+    if (!response || !response.ok) {
+      wakeLogger('manual', `唤醒检测请求失败 HTTP ${response?.status ?? '?'}`);
+      return false;
+    }
     const payload = await response.json();
     return payload?.detected === true;
   } catch {
+    wakeLogger('manual', '唤醒检测请求异常（网络/后端不可达）');
     return false;
   }
 }
