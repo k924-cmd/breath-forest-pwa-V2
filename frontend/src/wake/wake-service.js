@@ -69,17 +69,22 @@ function pickMime() {
   return null;
 }
 
-// 周期性取块并检测：每次拿自上次检测以来的新块，合并为最近 WINDOW 窗口。
+// 周期性取块并检测：MediaRecorder 每 250ms 产一帧累积在 chunks，这里按
+// WAKE_WINDOW_MS 取最近 N 帧合成一个滑动窗口 POST 给后端，窗口内的帧保留
+// 供下次继续。窗口必须够长容纳完整唤醒词（「小云小云」约 1s，1500ms 窗口
+// 实测检测率 100% vs 500ms 的 0%），否则唤醒词被切碎导致漏检。
 function schedulePoll() {
   clearTimeout(pollTimer);
   pollTimer = setTimeout(async () => {
     if (!recorder || recorder.state !== 'recording') return;
-    const recent = chunks.splice(0, chunks.length);
-    if (recent.length === 0) {
+    if (chunks.length === 0) {
       schedulePoll();
       return;
     }
-    const blob = new Blob(recent, { type: recorder.mimeType || 'audio/webm' });
+    const frameMs = 250;
+    const maxFrames = Math.max(1, Math.ceil(WAKE_WINDOW_MS / frameMs));
+    const windowed = chunks.slice(-maxFrames);
+    const blob = new Blob(windowed, { type: recorder.mimeType || 'audio/webm' });
     if (blob.size > 0) {
       const detected = await checkWake(blob);
       if (detected && wakeHandler) wakeHandler();

@@ -536,6 +536,9 @@ async function stopWakeWord() {
 function onWakeTriggered() {
   if (!state.settings.wakeWord || wakeRunning === false) return;
   if (state.isStreaming) return;
+  // 命中后停止持续监听，避免唤醒后仍轮询重复触发；保留开关状态供下次开启
+  wakeRunning = false;
+  stopWakeWord();
   unlockAudio();
   const modalId = showVoiceConfirmModal(null, 'recording');
   const recorder = new AudioRecorder();
