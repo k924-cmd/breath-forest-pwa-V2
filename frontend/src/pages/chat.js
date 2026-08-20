@@ -1,5 +1,5 @@
-import { icon } from '../components/icons.js?v=20260808-16';
-import { getConnectionPresentation, getSourceLabel, getTaskName, getTaskPresentation } from '../presentation.js?v=20260808-16';
+import { icon } from '../components/icons.js?v=20260808-17';
+import { getConnectionPresentation, getSourceLabel, getTaskName, getTaskPresentation } from '../presentation.js?v=20260808-17';
 
 function activeTaskCard(task) {
   if (!task) return '';

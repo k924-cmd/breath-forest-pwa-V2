@@ -1,4 +1,4 @@
-import { escapeHtml } from '../utils/html.js?v=20260808-16';
+import { escapeHtml } from '../utils/html.js?v=20260808-17';
 
 export const INTRO_SLOGAN = '每一次呼吸，都在变好';
 export const INTRO_SUBTITLE = '呼吸森林 · 陪你关照每一口空气';
