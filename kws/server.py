@@ -15,6 +15,7 @@ iic/speech_charctc_kws_phone-xiaoyun 模型检测唤醒词「小云小云」，
 
 import io
 import json
+import subprocess
 import time
 import wave
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -51,9 +52,12 @@ def check_wake_word(raw: bytes):
     但只在 output_dir 非空时创建——必须传 output_dir，否则报
     'NoneType' object has no attribute 'token_list' / writer 缺失。
     """
+    wav = to_wav_16k(raw)
+    if wav is None:
+        return {"detected": False, "keyword": KEYWORD, "score": None, "source": "python-kws", "error": "decode_failed"}
     model = load_model()
     res = model.generate(
-        input=raw,
+        input=wav,
         cache={},
         output_dir="/tmp/kws_out",
     )
@@ -69,6 +73,25 @@ def check_wake_word(raw: bytes):
             score = float(text.split()[-1]) if len(text.split()) >= 3 else None
             break
     return {"detected": detected, "keyword": KEYWORD, "score": score, "source": "python-kws"}
+
+
+def to_wav_16k(raw: bytes):
+    """把任意音频字节（webm/opus/ogg/mp4/wav）用 ffmpeg 转成 16kHz 单声道 WAV。
+
+    前端 MediaRecorder 产的是 webm/opus，FunASR 只认 wav/pcm；不转码会解析失败
+    导致唤醒永远不响。ffmpeg 转码失败（非音频）返回 None，调用方判未命中。
+    """
+    try:
+        proc = subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error",
+             "-i", "pipe:0", "-ac", "1", "-ar", "16000", "-f", "wav", "pipe:1"],
+            input=raw, capture_output=True, timeout=15,
+        )
+        if proc.returncode != 0 or not proc.stdout:
+            return None
+        return proc.stdout
+    except Exception:  # noqa: BLE001 - 转码失败降级未命中
+        return None
 
 
 class KwsHandler(BaseHTTPRequestHandler):

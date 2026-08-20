@@ -5,7 +5,7 @@ export const AUDIO_ERRORS = Object.freeze({
   EMPTY: '录音太短，未识别到语音'
 });
 
-export const MAX_RECORD_MS = 15000;
+export const MAX_RECORD_MS = 8000;
 // VAD 静音检测：低于该音量视为静音，连续静音超过 vadSilenceMs 自动停止。
 export const VAD_THRESHOLD = 0.02;
 export const VAD_SILENCE_MS = 1200;
@@ -62,7 +62,7 @@ export class AudioRecorder {
       stream = options.stream;
       this.ownsStream = false;
     } else {
-      const { requestMicStream } = await import('./mic-service.js?v=20260808-18');
+      const { requestMicStream } = await import('./mic-service.js?v=20260808-19');
       try {
         stream = await requestMicStream();
       } catch (error) {
@@ -75,13 +75,17 @@ export class AudioRecorder {
     this.mimeType = pickAudioMimeType();
     this.chunks = [];
     this.error = null;
+    // 固定低码率：语音 ASR 只需 16kHz 清晰度，webm/opus 默认 128kbps 会让
+    // 15s 录音达数百 KB，真机经隧道上传慢（实测 18s）。16kbps 语音足够且
+    // 上传体积缩小 8 倍。
+    const bitsPerSecond = 16000;
     try {
       this.recorder = this.mimeType
-        ? new MediaRecorder(stream, { mimeType: this.mimeType })
-        : new MediaRecorder(stream);
+        ? new MediaRecorder(stream, { mimeType: this.mimeType, audioBitsPerSecond: bitsPerSecond })
+        : new MediaRecorder(stream, { audioBitsPerSecond: bitsPerSecond });
     } catch {
       this.mimeType = null;
-      this.recorder = new MediaRecorder(stream);
+      this.recorder = new MediaRecorder(stream, { audioBitsPerSecond: bitsPerSecond });
     }
     this.recorder.ondataavailable = event => {
       if (event?.data?.size > 0) this.chunks.push(event.data);
@@ -167,7 +171,7 @@ export class AudioRecorder {
       this.stream?.getTracks().forEach(track => track.stop());
     } else {
       // 共享流：只释放引用，不 stop tracks（由 mic-service 归零后统一停）。
-      const { releaseMicStream } = await import('./mic-service.js?v=20260808-18');
+      const { releaseMicStream } = await import('./mic-service.js?v=20260808-19');
       if (this.stream) releaseMicStream(this.stream);
     }
     this.stream = null;
@@ -193,7 +197,7 @@ export class AudioRecorder {
     if (this.ownsStream) {
       this.stream?.getTracks().forEach(track => track.stop());
     } else if (this.stream) {
-      const { releaseMicStream } = await import('./mic-service.js?v=20260808-18');
+      const { releaseMicStream } = await import('./mic-service.js?v=20260808-19');
       releaseMicStream(this.stream);
     }
     this.stream = null;
