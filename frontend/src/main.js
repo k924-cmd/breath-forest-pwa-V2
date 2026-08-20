@@ -1,29 +1,29 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-17';
-import { icon } from './components/icons.js?v=20260808-17';
-import { homePage } from './pages/home.js?v=20260808-17';
-import { devicesPage } from './pages/devices.js?v=20260808-17';
-import { chatPage } from './pages/chat.js?v=20260808-17';
-import { profilePage } from './pages/profile.js?v=20260808-17';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-17';
-import { loginPage } from './components/login.js?v=20260808-17';
-import { login, isLoggedIn } from './auth/auth.js?v=20260808-17';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-17';
-import { fetchWeather } from './services/weather-service.js?v=20260808-17';
-import { toggleMockDevice } from './services/device-service.js?v=20260808-17';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-17';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-17';
-import { escapeHtml } from './utils/html.js?v=20260808-17';
-import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-17';
-import { initFeedback } from './utils/feedback.js?v=20260808-17';
-import { transcribeAudio } from './services/asr-service.js?v=20260808-17';
-import { synthesizeSpeech } from './services/tts-service.js?v=20260808-17';
-import { playBase64Interruptible, stopPlayback, unlockAudio } from './utils/play-audio.js?v=20260808-17';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-17';
+import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-18';
+import { icon } from './components/icons.js?v=20260808-18';
+import { homePage } from './pages/home.js?v=20260808-18';
+import { devicesPage } from './pages/devices.js?v=20260808-18';
+import { chatPage } from './pages/chat.js?v=20260808-18';
+import { profilePage } from './pages/profile.js?v=20260808-18';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-18';
+import { loginPage } from './components/login.js?v=20260808-18';
+import { login, isLoggedIn } from './auth/auth.js?v=20260808-18';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-18';
+import { fetchWeather } from './services/weather-service.js?v=20260808-18';
+import { toggleMockDevice } from './services/device-service.js?v=20260808-18';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-18';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-18';
+import { escapeHtml } from './utils/html.js?v=20260808-18';
+import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-18';
+import { initFeedback } from './utils/feedback.js?v=20260808-18';
+import { transcribeAudio } from './services/asr-service.js?v=20260808-18';
+import { synthesizeSpeech } from './services/tts-service.js?v=20260808-18';
+import { playBase64Interruptible, stopPlayback, unlockAudio } from './utils/play-audio.js?v=20260808-18';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-18';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260808-17';
+} from './presentation.js?v=20260808-18';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
@@ -448,8 +448,8 @@ async function speakReply(msgId, content) {
   if (state.settings.speak !== true) return;
   if (typeof content !== 'string' || !content.trim()) return;
   // 流式播报：后端逐句合成，前端逐句播放，缩短首字延迟；任何一步失败回落文本回复。
-  const { synthesizeSpeechStream } = await import('./services/tts-service.js?v=20260808-17');
-  const { pushStreamChunk, stopStreamPlayback } = await import('./utils/stream-playback.js?v=20260808-17');
+  const { synthesizeSpeechStream } = await import('./services/tts-service.js?v=20260808-18');
+  const { pushStreamChunk, stopStreamPlayback } = await import('./utils/stream-playback.js?v=20260808-18');
   stopStreamPlayback(currentSpeakToken);
   currentSpeakToken = null;
   currentSpeakMsgId = msgId;
@@ -512,7 +512,7 @@ async function toggleSpeak(msgId, text) {
 // 语音唤醒「小云小云」：开关开启后持续监听；命中后进入录音弹窗 → 转写 → 填充聊天。
 let wakeRunning = false;
 async function startWakeWord() {
-  const { startWake, wakeWordConfigured, WAKE_KEYWORD_LABEL } = await import('./wake/wake-service.js?v=20260808-17');
+  const { startWake, wakeWordConfigured, WAKE_KEYWORD_LABEL } = await import('./wake/wake-service.js?v=20260808-18');
   if (!wakeWordConfigured()) {
     toast('唤醒词未配置');
     return;
@@ -527,7 +527,7 @@ async function startWakeWord() {
 }
 
 async function stopWakeWord() {
-  const { stopWake } = await import('./wake/wake-service.js?v=20260808-17');
+  const { stopWake } = await import('./wake/wake-service.js?v=20260808-18');
   wakeRunning = false;
   await stopWake();
 }
@@ -555,13 +555,14 @@ function onWakeTriggered() {
   });
 }
 
-// 唤醒确认播报：TTS 合成「我在」并播放。与录音并发，失败静默降级；
+// 唤醒确认播报：TTS 合成确认语并播放。与录音并发，失败静默降级；
 // 受「语音播报」开关控制（关闭时唤醒确认不出声）。
 async function speakWakeAck() {
   if (state.settings.speak !== true) return;
   try {
-    const { playBase64Interruptible } = await import('./utils/play-audio.js?v=20260808-17');
-    const result = await synthesizeSpeech('我在');
+    const { playBase64Interruptible } = await import('./utils/play-audio.js?v=20260808-18');
+    const { WAKE_ACK_TEXT } = await import('./config.js?v=20260808-18');
+    const result = await synthesizeSpeech(WAKE_ACK_TEXT);
     if (result?.available && result.audioBase64) {
       playBase64Interruptible(result.audioBase64, result.format);
     }
@@ -569,7 +570,7 @@ async function speakWakeAck() {
 }
 
 async function requestMicStreamForWake(recorder) {
-  const { requestMicStream } = await import('./utils/mic-service.js?v=20260808-17');
+  const { requestMicStream } = await import('./utils/mic-service.js?v=20260808-18');
   const stream = await requestMicStream();
   await recorder.start({ stream });
 }
@@ -880,7 +881,7 @@ function bindVoiceButton(button) {
     if (prewarmed) return;
     prewarmed = true;
     try {
-      const { requestMicStream } = await import('./utils/mic-service.js?v=20260808-17');
+      const { requestMicStream } = await import('./utils/mic-service.js?v=20260808-18');
       await requestMicStream();
     } catch { /* 忽略 */ }
   };
@@ -899,7 +900,7 @@ function bindVoiceButton(button) {
       recorder = new AudioRecorder();
       recorder.__voiceModalId = modalId;
       try {
-        const { requestMicStream } = await import('./utils/mic-service.js?v=20260808-17');
+        const { requestMicStream } = await import('./utils/mic-service.js?v=20260808-18');
         const stream = await requestMicStream();
         await recorder.start({ stream });
         recordingStarted = true;

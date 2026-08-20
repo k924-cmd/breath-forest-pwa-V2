@@ -65,3 +65,5 @@ export const ADMIN_SESSION_KEY = 'breathForestAdminSessionV3';
 export const WAKE_KEYWORD_LABEL = '小云小云';
 export const WAKE_POLL_INTERVAL_MS = 500;
 export const WAKE_WINDOW_MS = 1500;
+// 唤醒命中后并发播报的确认语（TTS 合成）。
+export const WAKE_ACK_TEXT = '哎，我在';

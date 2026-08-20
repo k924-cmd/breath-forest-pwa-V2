@@ -8,9 +8,9 @@
 // 降级：无麦克风权限 / 后端不可达 / 流不可用 → 置 wakeAvailable=false，
 // 静默停用，不影响录音、播报等其他功能。
 
-import { WAKE_KEYWORD_LABEL, WAKE_POLL_INTERVAL_MS, WAKE_WINDOW_MS } from '../config.js?v=20260808-17';
-import { getApiBaseUrl, getApiKeyHeader, getAuthHeader } from '../services/conversation-service.js?v=20260808-17';
-import { requestMicStream, releaseMicStream } from '../utils/mic-service.js?v=20260808-17';
+import { WAKE_KEYWORD_LABEL, WAKE_POLL_INTERVAL_MS, WAKE_WINDOW_MS } from '../config.js?v=20260808-18';
+import { getApiBaseUrl, getApiKeyHeader, getAuthHeader } from '../services/conversation-service.js?v=20260808-18';
+import { requestMicStream, releaseMicStream } from '../utils/mic-service.js?v=20260808-18';
 
 export { WAKE_KEYWORD_LABEL };
 

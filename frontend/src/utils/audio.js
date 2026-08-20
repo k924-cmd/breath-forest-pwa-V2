@@ -62,7 +62,7 @@ export class AudioRecorder {
       stream = options.stream;
       this.ownsStream = false;
     } else {
-      const { requestMicStream } = await import('./mic-service.js?v=20260808-17');
+      const { requestMicStream } = await import('./mic-service.js?v=20260808-18');
       try {
         stream = await requestMicStream();
       } catch (error) {
@@ -167,7 +167,7 @@ export class AudioRecorder {
       this.stream?.getTracks().forEach(track => track.stop());
     } else {
       // 共享流：只释放引用，不 stop tracks（由 mic-service 归零后统一停）。
-      const { releaseMicStream } = await import('./mic-service.js?v=20260808-17');
+      const { releaseMicStream } = await import('./mic-service.js?v=20260808-18');
       if (this.stream) releaseMicStream(this.stream);
     }
     this.stream = null;
@@ -193,7 +193,7 @@ export class AudioRecorder {
     if (this.ownsStream) {
       this.stream?.getTracks().forEach(track => track.stop());
     } else if (this.stream) {
-      const { releaseMicStream } = await import('./mic-service.js?v=20260808-17');
+      const { releaseMicStream } = await import('./mic-service.js?v=20260808-18');
       releaseMicStream(this.stream);
     }
     this.stream = null;
