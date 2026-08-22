@@ -47,7 +47,7 @@ body { margin: 0; background: var(--bg); }
 }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
-/* 全屏背景：照片铺满整个应用容器，玻璃卡浮于其上 */
+/* 全屏背景：纯色铺满整个应用容器，玻璃卡浮于其上 */
 .app {
   height: 100vh;
   max-width: 680px;
@@ -55,9 +55,7 @@ button { cursor: pointer; }
   padding: calc(12px + env(safe-area-inset-top)) 16px calc(var(--nav-bleed, 90px) + env(safe-area-inset-bottom));
   overflow: hidden;
   position: relative;
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, .06) 0%, rgba(246, 250, 248, .92) 62%, rgba(246, 250, 248, .96) 100%),
-    url('assets/breath-forest-living-room.webp') center 28% / cover no-repeat;
+  background: var(--bg);
 }
 /* 底部导航卡高度：首页含「全部设备」入口行更高；内容底部留出导航卡空间。
    tabs 卡片：首页 124px + 12px bottom + 10px 间距 = 146px（卡片受 flex 推挤会再溢出
@@ -77,9 +75,9 @@ button { cursor: pointer; }
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 80% 4%, rgba(74, 222, 128, .28), transparent 34%),
-    radial-gradient(circle at 12% 88%, rgba(34, 197, 94, .2), transparent 30%),
-    radial-gradient(circle at 48% 44%, rgba(20, 184, 166, .08), transparent 26%);
+    radial-gradient(circle at 80% 4%, rgba(255, 255, 255, .5), transparent 34%),
+    radial-gradient(circle at 12% 88%, rgba(226, 232, 240, .4), transparent 30%),
+    radial-gradient(circle at 48% 44%, rgba(148, 163, 184, .12), transparent 26%);
 }
 .app > * { position: relative; z-index: 1; }
 .page {
