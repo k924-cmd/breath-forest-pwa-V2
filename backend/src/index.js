@@ -5,8 +5,8 @@ import {
   FakeOptimizerAdapter,
   InMemoryStateRepository,
   InMemoryTelemetryAdapter,
-  ManualClock,
   SequentialIdGenerator,
+  SystemClock,
 } from "./adapters/fakes.js";
 import { SqliteStateRepository } from "./adapters/sqlite.js";
 import { AssistantService } from "./conversation/assistant-service.js";
@@ -18,7 +18,7 @@ import { MiMoTtsAdapter } from "./adapters/mimo-tts.js";
 import { KwsFallbackAdapter, KwsHttpAdapter } from "./adapters/kws.js";
 
 export function createLocalAssistant(overrides = {}) {
-  const clock = overrides.clock ?? new ManualClock();
+  const clock = overrides.clock ?? new SystemClock();
   const dependencies = {
     clock,
     ids: overrides.ids ?? new SequentialIdGenerator(),

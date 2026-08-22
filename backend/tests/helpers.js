@@ -1,9 +1,10 @@
-import { createLocalAssistant } from "../src/index.js";
+import { createLocalAssistant, ManualClock } from "../src/index.js";
 
 export const transport = { actorId: "actor-1", scopeId: "home-1" };
 
 export function harness(overrides = {}) {
-  const app = createLocalAssistant(overrides);
+  const clock = overrides.clock ?? new ManualClock();
+  const app = createLocalAssistant({ ...overrides, clock });
   let sequence = 0;
   const send = (message, options = {}) => {
     sequence += 1;

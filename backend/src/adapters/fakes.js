@@ -10,6 +10,13 @@ export class ManualClock {
   set(iso) { this.current = new Date(iso); }
 }
 
+export class SystemClock {
+  now() { return new Date(); }
+  iso() { return new Date().toISOString(); }
+  advance() { throw new Error("SystemClock is read-only; use ManualClock for time travel in tests."); }
+  set() { throw new Error("SystemClock is read-only; use ManualClock for time travel in tests."); }
+}
+
 export class SequentialIdGenerator {
   constructor(prefix = "id") { this.prefix = prefix; this.value = 0; }
   next(kind = this.prefix) { this.value += 1; return `${kind}-${String(this.value).padStart(4, "0")}`; }
