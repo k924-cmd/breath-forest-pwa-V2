@@ -3,7 +3,7 @@
 // and returns a session token. The token is kept in sessionStorage so a refresh
 // keeps you signed in but closing the tab logs out.
 
-import { getApiBaseUrl, getApiKeyHeader, getSessionToken, ADMIN_SESSION_KEY } from '../services/conversation-service.js?v=20260808-25';
+import { getApiBaseUrl, getApiKeyHeader, getSessionToken, ADMIN_SESSION_KEY } from '../services/conversation-service.js?v=20260808-26';
 
 const REQUEST_TIMEOUT_MS = 10000;
 

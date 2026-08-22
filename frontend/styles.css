@@ -490,10 +490,15 @@ h1, h2, p { margin: 0; }
 /* ---- 对话页（主导）-------------------------------------------------------- */
 .chat-page.active {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
   gap: 10px;
   overflow: hidden;
 }
+.chat-page .chat-header { grid-row: 1; }
+.chat-page .active-task-slot { grid-row: 2; }
+.chat-page .messages { grid-row: 3; }
+.chat-page .prompt-row { grid-row: 4; }
+.chat-page .composer { grid-row: 5; }
 .chat-page { position: relative; isolation: isolate; }
 .chat-header { display: flex; align-items: center; gap: 10px; padding: 5px 2px; }
 .chat-bot-avatar {
@@ -745,6 +750,7 @@ h1, h2, p { margin: 0; }
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
 }
+.active-task-card > * { min-width: 0; }
 .active-task-card .task-status-icon {
   display: grid;
   place-items: center;
@@ -758,7 +764,16 @@ h1, h2, p { margin: 0; }
 .active-task-card small, .active-task-card b { display: block; }
 .active-task-card small { color: var(--muted); font-size: 8px; }
 .active-task-card b { margin-top: 2px; font-size: 11px; }
-.active-task-card strong { font-size: 10px; white-space: nowrap; }
+.active-task-card strong {
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.active-task-card strong svg { width: 10px; height: 10px; flex: 0 0 auto; }
 .active-task-card.scheduled strong { color: #8d9bb8; }
 .active-task-card.running strong { color: var(--accent-dark); }
 .active-task-card.paused strong { color: var(--medium); }
