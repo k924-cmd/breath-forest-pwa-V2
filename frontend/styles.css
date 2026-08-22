@@ -1,6 +1,10 @@
 /* =========================================================================
-   呼吸森林 V2 · 瑞士水疗极简 / 冷雾色系 / 高级静谧 v20260822-2
+   呼吸森林 V2 · 瑞士水疗极简 / 冷雾色系 / 高级静谧 v20260822-3
    雾白 + 浅灰 + 冰川蓝绿点缀；大留白圆角卡；柔和浅阴影；克制的颜色
+   Liquid Glass 移植（v20260822-3）：材质分层 + 顶部微光 + 四边折射高光，
+   仅作用于导航层（.tabs/.selection-bar/.toast/弹层），内容层玻璃保持克制；
+   新增 prefers-reduced-transparency 加厚磨砂，动画类降级。
+   界面背景（v20260822-4）：预设冷雾渐变 + 自定义图整页铺满，玻璃卡透出底色。
    Design tokens first, then components. Keeps all JS/test binding contracts.
    ========================================================================= */
 
@@ -21,6 +25,8 @@
   --glass-border: rgba(255, 255, 255, .8);           /* 高光描边 */
   --glass-border-outer: rgba(120, 148, 156, .16);    /* 玻璃外缘细线 */
   --glass-blur: 20px;
+  --glass-edge: rgba(127, 179, 182, .14);            /* 导航层玻璃四边折射高光（Liquid Glass 边缘光） */
+  --glass-sheen: linear-gradient(160deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 46%); /* 顶部漫反射 */
   --glass-shadow:
     inset 0 1px 0 rgba(255, 255, 255, .8),
     0 14px 34px -18px rgba(58, 84, 92, .14);
@@ -82,6 +88,24 @@ button { cursor: pointer; }
     radial-gradient(circle at 12% 88%, rgba(232, 238, 240, .4), transparent 30%),
     radial-gradient(circle at 48% 44%, rgba(159, 176, 184, .12), transparent 26%);
 }
+/* 用户自定义背景：整页铺满（cover 自适应），一键切换。渐变色由 JS 写入
+   #bg-style 的 background 属性，自定义图经 .has-user-bg::before 的 url()。
+   底色垫底保证加载/降级时仍是同一冷雾基调。 */
+.app.has-user-bg { background: linear-gradient(160deg, #dbe6e7, #e8efef); }
+.app.has-user-bg::before {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+/* 轻雾遮罩：保文字可读，玻璃卡仍能透出底色（Liquid Glass 感知层次） */
+.app.has-user-bg::after {
+  content: "";
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(244, 246, 247, .34);
+}
 .app > * { position: relative; z-index: 1; }
 .page {
   display: none;
@@ -112,6 +136,30 @@ h1, h2, p { margin: 0; }
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
 }
+/* 玻璃基底：顶部微光 + 四边折射描边，让玻璃在雾白底上"浮起"（参考 iOS Liquid Glass 高光）
+   仅凭 inset box-shadow 实现，不加伪元素、不改 DOM。
+   只作用于导航层（底部导航/操作栏/提示条/弹层），内容层卡片维持自身 shadow */
+.glass, .card-surface, .tabs, .composer, .toast, .selection-bar,
+.log-sheet, .profile-sheet, .detail-sheet, .device-detail-sheet,
+.voice-confirm-sheet {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .8),
+    inset 0 0 0 1px var(--glass-edge),
+    var(--glass-shadow);
+}
+
+/* Liquid Glass 材质分层（语义，不改任何既有类名）：
+   --glass-regular / --glass-clear 供导航层细节叠加质感；
+   内容层维持既有 --glass-bg 常规玻璃，不越权 */
+.glass-regular {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, .68), rgba(255, 255, 255, .5) 42%, rgba(255, 255, 255, .58)),
+    var(--glass-bg);
+}
+.glass-clear {
+  background: rgba(255, 255, 255, .5);
+  border-color: rgba(255, 255, 255, .9);
+}
 
 .circle-btn {
   border: 1px solid var(--glass-border);
@@ -125,7 +173,7 @@ h1, h2, p { margin: 0; }
   display: grid;
   place-items: center;
   color: var(--muted);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), var(--shadow-soft);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), inset 0 0 0 1px var(--glass-edge), var(--shadow-soft);
 }
 .circle-btn svg { width: 20px; }
 
@@ -660,7 +708,7 @@ h1, h2, p { margin: 0; }
   padding: 9px 12px;
   border-radius: 18px;
   background: rgba(255, 255, 255, .84);
-  box-shadow: var(--glass-shadow);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), inset 0 0 0 1px var(--glass-edge), var(--glass-shadow);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   animation: selection-rise .22s ease;
@@ -710,7 +758,7 @@ h1, h2, p { margin: 0; }
   background: rgba(255, 255, 255, .7);
   border: 1px solid var(--glass-border);
   border-bottom-color: var(--glass-border-outer);
-  box-shadow: var(--glass-shadow-soft);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), inset 0 0 0 1px var(--glass-edge), var(--glass-shadow-soft);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   transition: border-color .2s ease, box-shadow .2s ease;
@@ -1006,12 +1054,17 @@ h1, h2, p { margin: 0; }
   width: min(636px, calc(100% - 32px));
   border-radius: 28px;
   padding: 12px 16px 21px;
-  background: rgba(255, 255, 255, .78);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, .82), rgba(255, 255, 255, .62) 46%, rgba(255, 255, 255, .72)),
+    rgba(255, 255, 255, .78);
   border: 1px solid var(--glass-border);
   border-bottom-color: var(--glass-border-outer);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 12px 30px -12px rgba(43, 58, 66, .18);
-  backdrop-filter: blur(19px);
-  -webkit-backdrop-filter: blur(19px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .9),
+    inset 0 0 0 1px var(--glass-edge),
+    0 12px 30px -12px rgba(43, 58, 66, .18);
+  backdrop-filter: blur(19px) saturate(1.15);
+  -webkit-backdrop-filter: blur(19px) saturate(1.15);
 }
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .tabs { bottom: calc(12px + env(safe-area-inset-bottom)); }
@@ -1151,7 +1204,7 @@ h1, h2, p { margin: 0; }
   padding: 11px 15px;
   border-radius: 14px;
   background: rgba(255, 255, 255, .86);
-  box-shadow: var(--shadow);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), inset 0 0 0 1px var(--glass-edge), var(--shadow);
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -1168,8 +1221,8 @@ h1, h2, p { margin: 0; }
   display: flex;
   align-items: end;
   background: rgba(43, 58, 66, .28);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(6px) saturate(.9);
+  -webkit-backdrop-filter: blur(6px) saturate(.9);
   padding: 16px;
 }
 .log-sheet {
@@ -1180,7 +1233,7 @@ h1, h2, p { margin: 0; }
   border-bottom-color: var(--glass-border-outer);
   border-radius: 24px;
   padding: 19px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), 0 20px 60px rgba(43, 58, 66, .3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), inset 0 0 0 1px var(--glass-edge), 0 20px 60px rgba(43, 58, 66, .3);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
 }
@@ -1210,12 +1263,15 @@ h1, h2, p { margin: 0; }
 .voice-confirm-sheet {
   width: min(650px, 100%);
   margin: auto;
-  background: linear-gradient(160deg, rgba(255, 255, 255, .82) 0%, rgba(246, 249, 250, .72) 55%, rgba(228, 239, 239, .78) 100%);
+  background: linear-gradient(160deg, rgba(255, 255, 255, .86) 0%, rgba(246, 249, 250, .72) 55%, rgba(228, 239, 239, .78) 100%);
   border: 1px solid rgba(255, 255, 255, .75);
   border-bottom-color: rgba(159, 176, 184, .35);
   border-radius: 28px;
   padding: 22px 20px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), 0 24px 70px rgba(43, 58, 66, .35), 0 4px 20px rgba(90, 143, 150, .08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .95),
+    inset 0 0 0 1px var(--glass-edge),
+    0 24px 70px rgba(43, 58, 66, .35), 0 4px 20px rgba(90, 143, 150, .08);
   backdrop-filter: blur(28px) saturate(1.6);
   -webkit-backdrop-filter: blur(28px) saturate(1.6);
   overflow: hidden;
@@ -1398,12 +1454,65 @@ h1, h2, p { margin: 0; }
   border-bottom-color: var(--glass-border-outer);
   border-radius: 24px;
   padding: 19px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), 0 20px 60px rgba(43, 58, 66, .3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), inset 0 0 0 1px var(--glass-edge), 0 20px 60px rgba(43, 58, 66, .3);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 .profile-sheet header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 14px; }
 .profile-sheet h2 { font-size: 20px; margin-top: 3px; }
+
+/* 界面背景弹层 */
+.bg-sheet .bg-hint { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.bg-presets { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 15px 0 17px; }
+.bg-option {
+  border: 1px solid var(--glass-border);
+  border-bottom-color: var(--glass-border-outer);
+  border-radius: 15px;
+  padding: 8px;
+  background: rgba(255, 255, 255, .6);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+  color: var(--ink);
+  font-size: 11px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), var(--shadow-soft);
+  transition: transform .14s ease, box-shadow .2s ease;
+}
+.bg-option:active { transform: scale(.97); }
+.bg-option i { display: block; height: 44px; border-radius: 10px; background: var(--swatch); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 3px 8px -3px rgba(43, 58, 66, .25); }
+.bg-option span { font-weight: 650; }
+.bg-option.selected { box-shadow: 0 0 0 2px var(--accent), inset 0 1px 0 rgba(255, 255, 255, .7); }
+.bg-row { display: flex; align-items: center; gap: 8px; }
+.bg-action {
+  flex: 1;
+  border: 1px solid var(--glass-border);
+  border-bottom-color: var(--glass-border-outer);
+  border-radius: 12px;
+  padding: 10px 0;
+  background: rgba(255, 255, 255, .6);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 650;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+.bg-action.selected { color: var(--accent-dark); background: var(--accent-soft); }
+.bg-action.danger { color: var(--bad); }
+.bg-action.danger.disabled { opacity: .4; }
+.bg-upload {
+  flex: 1;
+  border: 1px dashed var(--accent-line);
+  border-radius: 12px;
+  padding: 10px 0;
+  background: rgba(244, 248, 248, .7);
+  color: var(--accent-dark);
+  font-size: 12px;
+  font-weight: 650;
+  text-align: center;
+  cursor: pointer;
+}
+.bg-upload input { display: none; }
+.bg-note { margin-top: 12px; font-size: 10px; color: var(--muted); }
 .profile-sheet header button {
   border: 0;
   width: 31px; height: 31px;
@@ -1457,7 +1566,7 @@ h1, h2, p { margin: 0; }
   background: rgba(255, 255, 255, .86);
   border: 1px solid var(--glass-border);
   border-bottom-color: var(--glass-border-outer);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), 0 20px 60px rgba(43, 58, 66, .3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), inset 0 0 0 1px var(--glass-edge), 0 20px 60px rgba(43, 58, 66, .3);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
   position: relative;
@@ -1549,7 +1658,7 @@ h1, h2, p { margin: 0; }
   background: rgba(255, 255, 255, .86);
   border: 1px solid var(--glass-border);
   border-bottom-color: var(--glass-border-outer);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), 0 24px 70px rgba(43, 58, 66, .3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), inset 0 0 0 1px var(--glass-edge), 0 24px 70px rgba(43, 58, 66, .3);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
 }
@@ -1685,10 +1794,32 @@ h1, h2, p { margin: 0; }
   .glass, .card-surface, .air-card, .scene-grid button, .bubble, .message-card,
   .active-task-card, .device-card, .system-brief, .environment-card, .profile-hero,
   .setting-list, .composer, .tabs, .modal, .log-sheet, .profile-sheet, .detail-sheet,
-  .device-detail-sheet, .luna-note, .toast, .connection-badge, .achievement article {
+  .device-detail-sheet, .luna-note, .toast, .connection-badge, .achievement article,
+  .selection-bar, .voice-confirm-sheet {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
+  /* 纯装饰动画降级：脉冲/跳动/光斑等一律静止 */
+  .home-realtime.live i,
+  .luna-stage:before,
+  .voice-tab.recording .voice-ripple,
+  .voice-tab.recording .voice-lottie,
+  .tabs.voice-active .voice-tab .voice-ripple,
+  .tabs.voice-active .voice-tab .voice-lottie,
+  .voice-loading-orbs i,
+  .voice-wave i {
+    animation: none !important;
+  }
+}
+/* 无障碍：减少透明时加厚磨砂、压暗玻璃，保证前景对比（iOS Liquid Glass 同款行为） */
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .card-surface, .tabs, .composer, .toast, .selection-bar,
+  .log-sheet, .profile-sheet, .detail-sheet, .device-detail-sheet,
+  .voice-confirm-sheet, .active-task-card, .home-cards, .luna-note, .home-note {
+    background: rgba(255, 255, 255, .94);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), var(--shadow-soft);
+  }
+  .app.has-user-bg::after { background: rgba(244, 246, 247, .62); }
 }
 /* =========================================================================
    呼吸森林 V2 · 入场动画 + 登录门控 + 首页重塑（v20260806-6 天气组件 + 气泡 Lottie）

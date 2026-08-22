@@ -1,29 +1,30 @@
-import { state, addLog, addMessage, saveState } from './app/state.js?v=20260808-26';
-import { icon } from './components/icons.js?v=20260808-26';
-import { homePage } from './pages/home.js?v=20260808-26';
-import { devicesPage } from './pages/devices.js?v=20260808-26';
-import { chatPage } from './pages/chat.js?v=20260808-26';
-import { profilePage } from './pages/profile.js?v=20260808-26';
-import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260808-26';
-import { loginPage } from './components/login.js?v=20260808-26';
-import { login, isLoggedIn } from './auth/auth.js?v=20260808-26';
-import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260808-26';
-import { fetchWeather } from './services/weather-service.js?v=20260808-26';
-import { toggleMockDevice } from './services/device-service.js?v=20260808-26';
-import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260808-26';
-import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260808-26';
-import { escapeHtml } from './utils/html.js?v=20260808-26';
-import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260808-26';
-import { initFeedback } from './utils/feedback.js?v=20260808-26';
-import { transcribeAudio } from './services/asr-service.js?v=20260808-26';
-import { synthesizeSpeech } from './services/tts-service.js?v=20260808-26';
-import { playBase64Interruptible, stopPlayback, unlockAudio } from './utils/play-audio.js?v=20260808-26';
-import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260808-26';
+import { state, addLog, addMessage, saveState, getStoredBackgroundImage, setStoredBackgroundImage } from './app/state.js?v=20260822-4';
+import { icon } from './components/icons.js?v=20260822-4';
+import { homePage } from './pages/home.js?v=20260822-4';
+import { devicesPage } from './pages/devices.js?v=20260822-4';
+import { chatPage } from './pages/chat.js?v=20260822-4';
+import { profilePage } from './pages/profile.js?v=20260822-4';
+import { introPage, INTRO_SLOGAN, INTRO_SUBTITLE } from './components/intro.js?v=20260822-4';
+import { loginPage } from './components/login.js?v=20260822-4';
+import { login, isLoggedIn } from './auth/auth.js?v=20260822-4';
+import { loadBackendSnapshot, sendConversationMessage, deleteMessages } from './services/conversation-service.js?v=20260822-4';
+import { fetchWeather } from './services/weather-service.js?v=20260822-4';
+import { toggleMockDevice } from './services/device-service.js?v=20260822-4';
+import { getEnvironmentSnapshot } from './services/environment-service.js?v=20260822-4';
+import { createMockDevices, findDevice, getDeviceMeta, normalizeBackendDevices } from './mocks/devices.js?v=20260822-4';
+import { escapeHtml } from './utils/html.js?v=20260822-4';
+import { AudioRecorder, supportsRecording, MAX_RECORD_MS } from './utils/audio.js?v=20260822-4';
+import { initFeedback } from './utils/feedback.js?v=20260822-4';
+import { transcribeAudio } from './services/asr-service.js?v=20260822-4';
+import { synthesizeSpeech } from './services/tts-service.js?v=20260822-4';
+import { playBase64Interruptible, stopPlayback, unlockAudio } from './utils/play-audio.js?v=20260822-4';
+import { messageSignature, structuredMessageHtml } from './components/message-cards.js?v=20260822-4';
+import { BG_PRESETS, resolveBackground } from './utils/background.js?v=20260822-4';
 import {
   formatObservedAt,
   getDeviceStateLabel,
   getSourceLabel
-} from './presentation.js?v=20260808-26';
+} from './presentation.js?v=20260822-4';
 
 const root = document.querySelector('#app');
 let environment = await getEnvironmentSnapshot();
@@ -73,6 +74,103 @@ function detailModal(kind) {
   };
   const [title, headline, copy] = details[kind];
   return `<div class="modal"><section class="detail-sheet"><button data-action="close">×</button><span>${icon(kind === 'energy' ? 'leaf' : kind === 'notice' ? 'chat' : kind === 'home' ? 'home' : 'spark')}</span><h2>${title}</h2><b>${escapeHtml(headline)}</b><p>${copy}</p></section></div>`;
+}
+
+// 应用当前背景到 .app：'custom' 需要真实图（读取独立存储），preset 走渐变类，default 清空
+function applyBackground() {
+  const app = document.querySelector('.app');
+  if (!app) return;
+  app.classList.toggle('has-user-bg', state.background !== 'default');
+  const styleEl = document.getElementById('bg-style');
+  if (!styleEl) return;
+  if (state.background === 'custom') {
+    const img = getStoredBackgroundImage();
+    if (img) {
+      styleEl.textContent = `.app.has-user-bg::before{background-image:url("${img}")}`;
+      return;
+    }
+    // 自定义图缺失（storage 清空）：回落默认
+    state.background = 'default';
+    app.classList.toggle('has-user-bg', false);
+    styleEl.textContent = '';
+    return;
+  }
+  const resolved = resolveBackground(state.background);
+  if (resolved && resolved !== 'custom') {
+    styleEl.textContent = `.app.has-user-bg::before{background:${resolved}}`;
+  } else {
+    styleEl.textContent = '';
+  }
+}
+
+function backgroundModal() {
+  const current = state.background;
+  const isPreset = current === 'custom' ? '' : current.startsWith('preset:') ? current.slice(7) : '';
+  const hasCustom = Boolean(getStoredBackgroundImage());
+  const presets = BG_PRESETS.map(p => `<button class="bg-option ${isPreset === p.id ? 'selected' : ''}" data-bg-preset="${p.id}" title="${escapeHtml(p.name)}" style="--swatch:${p.css}"><i></i><span>${escapeHtml(p.name)}</span></button>`).join('');
+  return `<div class="modal"><section class="profile-sheet bg-sheet" role="dialog" aria-modal="true"><header><div><span class="eyebrow">APPEARANCE</span><h2>界面背景</h2></div><button data-action="close">×</button></header>
+    <p class="bg-hint">换一张底色，玻璃卡片会自动透出背景，呈现液态玻璃质感。</p>
+    <div class="bg-presets">${presets}</div>
+    <div class="bg-row"><button class="bg-action ${current === 'default' ? 'selected' : ''}" data-bg-default>默认雾白</button><label class="bg-upload"><input type="file" accept="image/*" id="bg-image-input">${hasCustom ? '更换图片' : '上传图片'}</label><button class="bg-action danger ${current === 'custom' && hasCustom ? '' : 'disabled'}" data-bg-remove>恢复默认</button></div>
+    <p class="bg-note">自定义图片仅保存在本机，不会上传到服务器。</p>
+  </section></div>`;
+}
+
+function bindBackgroundModal() {
+  document.querySelectorAll('[data-bg-preset]').forEach(button => {
+    button.onclick = () => {
+      state.background = `preset:${button.dataset.bgPreset}`;
+      saveState();
+      applyBackground();
+      render();
+      toast('背景已切换');
+    };
+  });
+  document.querySelector('[data-bg-default]')?.addEventListener('click', () => {
+    state.background = 'default';
+    saveState();
+    applyBackground();
+    render();
+    toast('已恢复默认雾白');
+  });
+  document.querySelector('[data-bg-remove]')?.addEventListener('click', () => {
+    if (state.background !== 'custom') return;
+    setStoredBackgroundImage('');
+    state.background = 'default';
+    saveState();
+    applyBackground();
+    render();
+    toast('已移除自定义图片');
+  });
+  document.querySelector('#bg-image-input')?.addEventListener('change', event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 12 * 1024 * 1024) {
+      toast('图片过大，请选择 12MB 以内');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxSide = 1600;
+        const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', .82);
+        setStoredBackgroundImage(dataUrl);
+        state.background = 'custom';
+        saveState();
+        applyBackground();
+        render();
+        toast('背景已应用');
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function deviceDetailModal(deviceId) {
@@ -292,9 +390,10 @@ function render() {
     bind();
     return;
   }
-  root.innerHTML = `<main class="app ${state.tab === 'home' ? 'home-mode' : ''} ${state.tab === 'chat' ? 'chat-mode' : ''}">${homePage(state, environment, state.realtime, weather)}${devicesPage(state)}${chatPage(state)}${profilePage(state)}</main>${tabs()}<div id="toast" class="toast"></div><div id="modal-root"></div><div id="effect-root"></div><div id="selection-bar" class="selection-bar glass" hidden><span class="selection-count">已选 0 条</span><button class="selection-delete">删除</button><button class="selection-cancel">取消</button></div>`;
+  root.innerHTML = `<main class="app ${state.tab === 'home' ? 'home-mode' : ''} ${state.tab === 'chat' ? 'chat-mode' : ''}">${homePage(state, environment, state.realtime, weather)}${devicesPage(state)}${chatPage(state)}${profilePage(state)}</main>${tabs()}<div id="toast" class="toast"></div><div id="modal-root"></div><div id="effect-root"></div><div id="selection-bar" class="selection-bar glass" hidden><span class="selection-count">已选 0 条</span><button class="selection-delete">删除</button><button class="selection-cancel">取消</button></div><style id="bg-style"></style>`;
   renderMessages();
   bind();
+  applyBackground();
   initHomeLottie();
   initVoiceLottie();
   if (activeDeviceId) openDeviceDetail(activeDeviceId);
@@ -448,8 +547,8 @@ async function speakReply(msgId, content) {
   if (state.settings.speak !== true) return;
   if (typeof content !== 'string' || !content.trim()) return;
   // 流式播报：后端逐句合成，前端逐句播放，缩短首字延迟；任何一步失败回落文本回复。
-  const { synthesizeSpeechStream } = await import('./services/tts-service.js?v=20260808-26');
-  const { pushStreamChunk, stopStreamPlayback } = await import('./utils/stream-playback.js?v=20260808-26');
+  const { synthesizeSpeechStream } = await import('./services/tts-service.js?v=20260822-4');
+  const { pushStreamChunk, stopStreamPlayback } = await import('./utils/stream-playback.js?v=20260822-4');
   stopStreamPlayback(currentSpeakToken);
   currentSpeakToken = null;
   currentSpeakMsgId = msgId;
@@ -512,7 +611,7 @@ async function toggleSpeak(msgId, text) {
 // 语音唤醒「小云小云」：开关开启后持续监听；命中后进入录音弹窗 → 转写 → 填充聊天。
 let wakeRunning = false;
 async function startWakeWord() {
-  const { startWake, wakeWordConfigured, setWakeLogger, WAKE_KEYWORD_LABEL } = await import('./wake/wake-service.js?v=20260808-26');
+  const { startWake, wakeWordConfigured, setWakeLogger, WAKE_KEYWORD_LABEL } = await import('./wake/wake-service.js?v=20260822-4');
   setWakeLogger(addLog);
   if (!wakeWordConfigured()) {
     toast('唤醒词未配置');
@@ -528,7 +627,7 @@ async function startWakeWord() {
 }
 
 async function stopWakeWord() {
-  const { stopWake } = await import('./wake/wake-service.js?v=20260808-26');
+  const { stopWake } = await import('./wake/wake-service.js?v=20260822-4');
   wakeRunning = false;
   await stopWake();
 }
@@ -561,8 +660,8 @@ function onWakeTriggered() {
 async function speakWakeAck() {
   if (state.settings.speak !== true) return;
   try {
-    const { playBase64Interruptible } = await import('./utils/play-audio.js?v=20260808-26');
-    const { WAKE_ACK_TEXT } = await import('./config.js?v=20260808-26');
+    const { playBase64Interruptible } = await import('./utils/play-audio.js?v=20260822-4');
+    const { WAKE_ACK_TEXT } = await import('./config.js?v=20260822-4');
     const result = await synthesizeSpeech(WAKE_ACK_TEXT);
     if (result?.available && result.audioBase64) {
       playBase64Interruptible(result.audioBase64, result.format);
@@ -571,7 +670,7 @@ async function speakWakeAck() {
 }
 
 async function requestMicStreamForWake(recorder) {
-  const { requestMicStream } = await import('./utils/mic-service.js?v=20260808-26');
+  const { requestMicStream } = await import('./utils/mic-service.js?v=20260822-4');
   const stream = await requestMicStream();
   await recorder.start({ stream });
 }
@@ -724,6 +823,9 @@ function bind() {
   });
   document.querySelectorAll('[data-action="logs"]').forEach(button => {
     button.onclick = () => { document.querySelector('#modal-root').innerHTML = logsModal(); bindModal(); };
+  });
+  document.querySelectorAll('[data-action="background"]').forEach(button => {
+    button.onclick = () => { document.querySelector('#modal-root').innerHTML = backgroundModal(); bindModal(); bindBackgroundModal(); };
   });
   document.querySelectorAll('[data-action="profile"]').forEach(button => {
     button.onclick = () => { document.querySelector('#modal-root').innerHTML = profileModal(); bindModal(); };
@@ -882,7 +984,7 @@ function bindVoiceButton(button) {
     if (prewarmed) return;
     prewarmed = true;
     try {
-      const { requestMicStream } = await import('./utils/mic-service.js?v=20260808-26');
+      const { requestMicStream } = await import('./utils/mic-service.js?v=20260822-4');
       await requestMicStream();
     } catch { /* 忽略 */ }
   };
@@ -901,7 +1003,7 @@ function bindVoiceButton(button) {
       recorder = new AudioRecorder();
       recorder.__voiceModalId = modalId;
       try {
-        const { requestMicStream } = await import('./utils/mic-service.js?v=20260808-26');
+        const { requestMicStream } = await import('./utils/mic-service.js?v=20260822-4');
         const stream = await requestMicStream();
         await recorder.start({ stream });
         recordingStarted = true;

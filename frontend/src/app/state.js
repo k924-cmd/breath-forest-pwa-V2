@@ -1,6 +1,8 @@
-import { createMockDevices } from '../mocks/devices.js?v=20260808-26';
+import { createMockDevices } from '../mocks/devices.js?v=20260822-4';
 
 export const STORAGE_KEY = 'breathForestUiV2';
+// 自定义背景图独立存储：base64 体积大，避免每次 saveState 整体重写撑大主 key
+export const BG_IMAGE_KEY = 'breathForestBgImage';
 
 function readStoredState() {
   try {
@@ -60,6 +62,8 @@ export const state = {
     { time: '10:00', type: 'ai', text: 'UI Mock 已准备就绪。' },
     { time: '09:25', type: 'manual', text: '当前所有设备操作仅保存在本地。' }
   ],
+  // 界面背景：'default' 默认雾白 / 'preset:<id>' 冷雾主题渐变 / 'custom' 用户上传图
+  background: stored.background || 'default',
   isStreaming: false
 };
 
@@ -84,6 +88,24 @@ export function saveState() {
     deviceView: state.deviceView,
     profile: state.profile,
     logs: state.logs,
-    settings: state.settings
+    settings: state.settings,
+    background: state.background
   }));
+}
+
+export function getStoredBackgroundImage() {
+  try {
+    return localStorage.getItem(BG_IMAGE_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setStoredBackgroundImage(dataUrl) {
+  try {
+    if (dataUrl) localStorage.setItem(BG_IMAGE_KEY, dataUrl);
+    else localStorage.removeItem(BG_IMAGE_KEY);
+  } catch {
+    // localStorage 不可用时忽略（内存态仍生效）
+  }
 }

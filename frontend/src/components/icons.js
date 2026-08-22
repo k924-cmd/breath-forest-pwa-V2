@@ -33,6 +33,7 @@ const paths = {
   sync: '<path d="M3 12a9 9 0 0 1 15.5-6.2L20 7M21 12a9 9 0 0 1-15.5 6.2L4 17"/><path d="M20 4v3h-3M4 20v-3h3"/>',
   arrowUp: '<path d="M12 19V5M5 12l7-7 7 7"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  image: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m21 15-5-5-5 5 3 3H3"/>',
   half: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z"/>'
 };
 

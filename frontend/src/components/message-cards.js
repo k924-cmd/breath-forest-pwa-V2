@@ -1,5 +1,5 @@
-import { escapeHtml } from '../utils/html.js?v=20260808-26';
-import { icon } from './icons.js?v=20260808-26';
+import { escapeHtml } from '../utils/html.js?v=20260822-4';
+import { icon } from './icons.js?v=20260822-4';
 import {
   formatObservedAt,
   getActionLabel,
@@ -10,7 +10,7 @@ import {
   getTaskName,
   getTaskPresentation,
   splitDisclaimerContent
-} from '../presentation.js?v=20260808-26';
+} from '../presentation.js?v=20260822-4';
 
 function findDevice(deviceId, devices) {
   return (Array.isArray(devices) ? devices : []).find(device => device.id === deviceId);

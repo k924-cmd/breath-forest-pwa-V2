@@ -1,4 +1,4 @@
-import { icon } from './components/icons.js?v=20260808-26';
+import { icon } from './components/icons.js?v=20260822-4';
 
 const TASK_PRESENTATIONS = {
   scheduled: { icon: icon('schedule'), label: '待运行', tone: 'scheduled' },
