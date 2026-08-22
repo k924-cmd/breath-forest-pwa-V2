@@ -15,7 +15,25 @@ const paths = {
   more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
   arrow: '<path d="m9 18 6-6-6-6"/>',
   mic: '<rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/>',
-  speak: '<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>'
+  speak: '<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  cloud: '<path d="M7 18a4 4 0 0 1-.6-7.96A6 6 0 0 1 18 8.5a3.5 3.5 0 0 1 .5 7H7Z"/>',
+  rain: '<path d="M7 14a4 4 0 0 1-.6-7.96A6 6 0 0 1 18 8.5a3.5 3.5 0 0 1 .5 7H7Z"/><path d="M8 18l-1 3M12.5 18l-1 3M17 18l-1 3"/>',
+  snow: '<path d="M7 14a4 4 0 0 1-.6-7.96A6 6 0 0 1 18 8.5a3.5 3.5 0 0 1 .5 7H7Z"/><path d="M12 15v4M10 16l4 2M14 16l-4 2"/>',
+  breeze: '<path d="M3 8h10a2.5 2.5 0 1 0-2.5-2.5"/><path d="M3 12h13a2.5 2.5 0 1 1-2.5 2.5"/><path d="M3 16h7"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  cancel: '<path d="M18 6 6 18M6 6l12 12"/>',
+  schedule: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  play: '<path d="m8 5 11 7-11 7Z"/>',
+  pause: '<rect x="7" y="5" width="4" height="14" rx="1"/><rect x="13" y="5" width="4" height="14" rx="1"/>',
+  stop: '<rect x="7" y="7" width="10" height="10" rx="2"/>',
+  alert: '<path d="M12 3 2.5 20h19Z"/><path d="M12 10v4M12 17.5h.01"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.7 2.2c-.8.4-1.2 1-1.2 1.8v.5M12 17.5h.01"/>',
+  refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v6h-6"/>',
+  sync: '<path d="M3 12a9 9 0 0 1 15.5-6.2L20 7M21 12a9 9 0 0 1-15.5 6.2L4 17"/><path d="M20 4v3h-3M4 20v-3h3"/>',
+  arrowUp: '<path d="M12 19V5M5 12l7-7 7 7"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  half: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z"/>'
 };
 
 export function icon(name) {

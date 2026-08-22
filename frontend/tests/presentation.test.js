@@ -53,7 +53,7 @@ test('任务状态以不同文字和图标呈现', () => {
 test('部分成功回执具有独立文案和图标', () => {
   const partial = getReceiptPresentation('partial_success');
   assert.equal(partial.label, '部分成功');
-  assert.equal(partial.icon, '◐');
+  assert.match(partial.icon, /^<svg/);
 });
 
 test('model 来源显示为模型标识，Mock 降级不冒充模型', () => {

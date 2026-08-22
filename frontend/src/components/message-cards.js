@@ -1,5 +1,5 @@
-import { escapeHtml } from '../utils/html.js?v=20260808-23';
-import { icon } from './icons.js?v=20260808-23';
+import { escapeHtml } from '../utils/html.js?v=20260808-24';
+import { icon } from './icons.js?v=20260808-24';
 import {
   formatObservedAt,
   getActionLabel,
@@ -10,7 +10,7 @@ import {
   getTaskName,
   getTaskPresentation,
   splitDisclaimerContent
-} from '../presentation.js?v=20260808-23';
+} from '../presentation.js?v=20260808-24';
 
 function findDevice(deviceId, devices) {
   return (Array.isArray(devices) ? devices : []).find(device => device.id === deviceId);
@@ -27,19 +27,19 @@ export function confirmationHtml(confirmation) {
   if (!confirmation) return '';
   const pending = confirmation.status === 'pending';
   const resolution = {
-    pending: '✓ 待确认',
-    confirmed: '✓ 已确认',
-    cancelled: '× 已取消',
-    expired: '⌛ 已过期',
-    invalidated: '! 已失效'
-  }[confirmation.status] || '? 状态未知';
-  return `<section class="message-card confirmation-card"><header><span>✓</span><b>确认计划</b><strong>${resolution}</strong></header><p>${escapeHtml(confirmation.plan?.summary || '请确认是否继续。')}</p><small>有效至 ${formatObservedAt(confirmation.expiresAt)}</small>${pending ? `<div class="message-actions"><button data-continuation-type="confirmation" data-continuation-id="${escapeHtml(confirmation.confirmationId)}" data-continuation-message="确认">确认</button><button class="secondary" data-continuation-type="confirmation" data-continuation-id="${escapeHtml(confirmation.confirmationId)}" data-continuation-message="取消">取消</button></div>` : ''}</section>`;
+    pending: `待确认`,
+    confirmed: `已确认`,
+    cancelled: `已取消`,
+    expired: `已过期`,
+    invalidated: `已失效`
+  }[confirmation.status] || `状态未知`;
+  return `<section class="message-card confirmation-card"><header><span>${icon('check')}</span><b>确认计划</b><strong>${icon('check')} ${resolution}</strong></header><p>${escapeHtml(confirmation.plan?.summary || '请确认是否继续。')}</p><small>有效至 ${formatObservedAt(confirmation.expiresAt)}</small>${pending ? `<div class="message-actions"><button data-continuation-type="confirmation" data-continuation-id="${escapeHtml(confirmation.confirmationId)}" data-continuation-message="确认">确认</button><button class="secondary" data-continuation-type="confirmation" data-continuation-id="${escapeHtml(confirmation.confirmationId)}" data-continuation-message="取消">取消</button></div>` : ''}</section>`;
 }
 
 export function clarificationHtml(clarification) {
   if (!clarification) return '';
   const options = Array.isArray(clarification.options) ? clarification.options : [];
-  return `<section class="message-card clarification-card"><header><span>?</span><b>需要补充信息</b><strong>${clarification.resolved ? '✓ 已补充' : '? 待澄清'}</strong></header><p>${escapeHtml(clarification.prompt)}</p>${options.length && !clarification.resolved ? `<div class="message-actions option-actions">${options.map(option => `<button data-continuation-type="clarification" data-continuation-id="${escapeHtml(clarification.clarificationId)}" data-continuation-message="${escapeHtml(option)}">${escapeHtml(option)}</button>`).join('')}</div>` : ''}</section>`;
+  return `<section class="message-card clarification-card"><header><span>${icon('help')}</span><b>需要补充信息</b><strong>${icon('check')} ${clarification.resolved ? '已补充' : '待澄清'}</strong></header><p>${escapeHtml(clarification.prompt)}</p>${options.length && !clarification.resolved ? `<div class="message-actions option-actions">${options.map(option => `<button data-continuation-type="clarification" data-continuation-id="${escapeHtml(clarification.clarificationId)}" data-continuation-message="${escapeHtml(option)}">${escapeHtml(option)}</button>`).join('')}</div>` : ''}</section>`;
 }
 
 export function receiptHtml(receipt, devices) {
@@ -56,7 +56,7 @@ export function receiptHtml(receipt, devices) {
 export function errorHtml(error, responseType) {
   if (!error && !['rejection', 'error'].includes(responseType)) return '';
   const isRejection = responseType === 'rejection';
-  return `<section class="message-card error-card ${isRejection ? 'rejection' : 'error'}"><header><span>${isRejection ? '×' : '!'}</span><b>${isRejection ? '请求已拒绝' : '请求出错'}</b><strong>${escapeHtml(error?.code || (isRejection ? 'REJECTED' : 'ERROR'))}</strong></header>${error?.message ? `<p>${escapeHtml(error.message)}</p>` : ''}${error?.retryable ? '<small>可以稍后重试</small>' : '<small>请调整请求后重试</small>'}</section>`;
+  return `<section class="message-card error-card ${isRejection ? 'rejection' : 'error'}"><header><span>${icon(isRejection ? 'cancel' : 'alert')}</span><b>${isRejection ? '请求已拒绝' : '请求出错'}</b><strong>${escapeHtml(error?.code || (isRejection ? 'REJECTED' : 'ERROR'))}</strong></header>${error?.message ? `<p>${escapeHtml(error.message)}</p>` : ''}${error?.retryable ? '<small>可以稍后重试</small>' : '<small>请调整请求后重试</small>'}</section>`;
 }
 
 export function sourcesHtml(sources, sourceMode) {
@@ -76,7 +76,7 @@ export function contentHtml(content) {
 export function realTimeHtml(realtime) {
   if (!realtime) return '';
   const results = Array.isArray(realtime.results) ? realtime.results : [];
-  return `<section class="message-card realtime-card"><header><span>↗</span><b>实时引擎 · Tavily</b><strong>${formatObservedAt(realtime.observedAt)}</strong></header>${realtime.query ? `<small>查询：${escapeHtml(realtime.query)}</small>` : ''}${results.length ? `<div class="realtime-results">${results.slice(0, 3).map(item => item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title || item.url)}</a>` : `<span>${escapeHtml(item.title || '')}</span>`).join('')}</div>` : ''}</section>`;
+  return `<section class="message-card realtime-card"><header><span>${icon('arrowUp')}</span><b>实时引擎 · Tavily</b><strong>${formatObservedAt(realtime.observedAt)}</strong></header>${realtime.query ? `<small>查询：${escapeHtml(realtime.query)}</small>` : ''}${results.length ? `<div class="realtime-results">${results.slice(0, 3).map(item => item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title || item.url)}</a>` : `<span>${escapeHtml(item.title || '')}</span>`).join('')}</div>` : ''}</section>`;
 }
 
 export function structuredMessageHtml(message, devices) {

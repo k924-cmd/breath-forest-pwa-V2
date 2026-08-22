@@ -1,7 +1,7 @@
-import { icon } from '../components/icons.js?v=20260808-23';
-import { getDeviceMeta } from '../mocks/devices.js?v=20260808-23';
-import { formatObservedAt, getConnectionPresentation, getDeviceStateLabel, getSourceLabel } from '../presentation.js?v=20260808-23';
-import { escapeHtml } from '../utils/html.js?v=20260808-23';
+import { icon } from '../components/icons.js?v=20260808-24';
+import { getDeviceMeta } from '../mocks/devices.js?v=20260808-24';
+import { formatObservedAt, getConnectionPresentation, getDeviceStateLabel, getSourceLabel } from '../presentation.js?v=20260808-24';
+import { escapeHtml } from '../utils/html.js?v=20260808-24';
 
 function deviceCard(device, state) {
   const meta = getDeviceMeta(device);
@@ -27,6 +27,6 @@ export function devicesPage(state) {
     <section class="system-brief glass connection-panel ${connection.tone}"><span class="brief-orb">${connection.icon}</span><div><b>${connection.label}</b><p>${connection.detail}</p></div><small>${formatObservedAt(latestObservedAt)}</small></section>
     <div class="device-list ${state.deviceView}">${state.devices.map(device => deviceCard(device, state)).join('')}</div>
     <section class="section-heading timeline-heading"><div><span class="eyebrow">ENVIRONMENT TIMELINE</span><h2>环境时间轴</h2></div><span>UI Mock 图表</span></section>
-    <section class="environment-card glass"><div class="chart-top"><b>PM2.5 趋势</b><span>仅界面演示，不代表后端历史数据</span></div><svg viewBox="0 0 340 112" aria-label="UI Mock PM2.5 趋势图"><defs><linearGradient id="airFill" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#e8a070" stop-opacity=".56"/><stop offset="1" stop-color="#e8a070" stop-opacity="0"/></linearGradient></defs><path class="gridline" d="M0 25H340M0 58H340M0 91H340"/><path class="area" d="M0 80C25 66 43 83 70 62s42 8 70-12 46 24 69 8 48-10 70-26 37 12 61-5v85H0Z"/><path class="line" d="M0 80C25 66 43 83 70 62s42 8 70-12 46 24 69 8 48-10 70-26 37 12 61-5"/></svg><div class="chart-times"><span>08:00</span><span>12:00</span><span>16:00</span><span>现在</span></div></section>
+    <section class="environment-card glass"><div class="chart-top"><b>PM2.5 趋势</b><span>仅界面演示，不代表后端历史数据</span></div><svg viewBox="0 0 340 112" aria-label="UI Mock PM2.5 趋势图"><defs><linearGradient id="airFill" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#7fb3b6" stop-opacity=".5"/><stop offset="1" stop-color="#7fb3b6" stop-opacity="0"/></linearGradient></defs><path class="gridline" d="M0 25H340M0 58H340M0 91H340"/><path class="area" d="M0 80C25 66 43 83 70 62s42 8 70-12 46 24 69 8 48-10 70-26 37 12 61-5v85H0Z"/><path class="line" d="M0 80C25 66 43 83 70 62s42 8 70-12 46 24 69 8 48-10 70-26 37 12 61-5"/></svg><div class="chart-times"><span>08:00</span><span>12:00</span><span>16:00</span><span>现在</span></div></section>
   </section>`;
 }

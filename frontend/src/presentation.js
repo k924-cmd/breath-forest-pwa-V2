@@ -1,31 +1,33 @@
+import { icon } from './components/icons.js?v=20260808-24';
+
 const TASK_PRESENTATIONS = {
-  scheduled: { icon: '◷', label: '待运行', tone: 'scheduled' },
-  running: { icon: '▶', label: '运行中', tone: 'running' },
-  paused: { icon: 'Ⅱ', label: '已暂停', tone: 'paused' },
-  stopped: { icon: '■', label: '已停止', tone: 'stopped' },
-  failed: { icon: '!', label: '失败', tone: 'failed' }
+  scheduled: { icon: icon('schedule'), label: '待运行', tone: 'scheduled' },
+  running: { icon: icon('play'), label: '运行中', tone: 'running' },
+  paused: { icon: icon('pause'), label: '已暂停', tone: 'paused' },
+  stopped: { icon: icon('stop'), label: '已停止', tone: 'stopped' },
+  failed: { icon: icon('alert'), label: '失败', tone: 'failed' }
 };
 
 const RESPONSE_PRESENTATIONS = {
-  knowledge: { icon: 'i', label: '知识回复', tone: 'info' },
-  environment_status: { icon: '⌁', label: '环境状态', tone: 'info' },
-  device_status: { icon: '⌂', label: '设备状态', tone: 'info' },
-  real_time: { icon: '↗', label: '实时信息', tone: 'realtime' },
-  clarification: { icon: '?', label: '需要澄清', tone: 'clarification' },
-  confirmation: { icon: '✓', label: '待确认', tone: 'confirmation' },
-  task_status: { icon: '◷', label: '任务状态', tone: 'task' },
-  execution_result: { icon: '↳', label: '执行回执', tone: 'receipt' },
-  rejection: { icon: '×', label: '已拒绝', tone: 'rejection' },
-  error: { icon: '!', label: '错误', tone: 'error' }
+  knowledge: { icon: icon('info'), label: '知识回复', tone: 'info' },
+  environment_status: { icon: icon('wind'), label: '环境状态', tone: 'info' },
+  device_status: { icon: icon('devices'), label: '设备状态', tone: 'info' },
+  real_time: { icon: icon('arrowUp'), label: '实时信息', tone: 'realtime' },
+  clarification: { icon: icon('help'), label: '需要澄清', tone: 'clarification' },
+  confirmation: { icon: icon('check'), label: '待确认', tone: 'confirmation' },
+  task_status: { icon: icon('schedule'), label: '任务状态', tone: 'task' },
+  execution_result: { icon: icon('sync'), label: '执行回执', tone: 'receipt' },
+  rejection: { icon: icon('cancel'), label: '已拒绝', tone: 'rejection' },
+  error: { icon: icon('alert'), label: '错误', tone: 'error' }
 };
 
 const RECEIPT_PRESENTATIONS = {
-  succeeded: { icon: '✓', label: '成功', tone: 'success' },
-  noop: { icon: '↺', label: '已处于目标状态', tone: 'noop' },
-  partial_success: { icon: '◐', label: '部分成功', tone: 'partial' },
-  failed: { icon: '×', label: '失败', tone: 'failed' },
-  timed_out: { icon: '⌛', label: '超时，最终状态未知', tone: 'failed' },
-  unknown: { icon: '?', label: '状态未知', tone: 'unknown' }
+  succeeded: { icon: icon('check'), label: '成功', tone: 'success' },
+  noop: { icon: icon('refresh'), label: '已处于目标状态', tone: 'noop' },
+  partial_success: { icon: icon('half'), label: '部分成功', tone: 'partial' },
+  failed: { icon: icon('cancel'), label: '失败', tone: 'failed' },
+  timed_out: { icon: icon('schedule'), label: '超时，最终状态未知', tone: 'failed' },
+  unknown: { icon: icon('help'), label: '状态未知', tone: 'unknown' }
 };
 
 const DEVICE_STATE_LABELS = {

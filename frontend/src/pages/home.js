@@ -1,17 +1,17 @@
-import { icon } from '../components/icons.js?v=20260808-23';
-import { getConnectionPresentation } from '../presentation.js?v=20260808-23';
-import { escapeHtml } from '../utils/html.js?v=20260808-23';
+import { icon } from '../components/icons.js?v=20260808-24';
+import { getConnectionPresentation } from '../presentation.js?v=20260808-24';
+import { escapeHtml } from '../utils/html.js?v=20260808-24';
 
 function realtimeBadge(realtime) {
   const live = Boolean(realtime?.available);
   return `<span class="home-realtime ${live ? 'live' : ''}" title="${live ? '已接入实时搜索引擎' : '未配置实时引擎，使用本地模拟'}"><i></i>${live ? '实时情况' : '实时情况 · 本地模拟'}</span>`;
 }
 
-const WEATHER_ICONS = { sun: '☀', cloud: '☁', rain: '🌧', snow: '❄', wind: '🌬' };
+const WEATHER_ICONS = { sun: 'sun', cloud: 'cloud', rain: 'rain', snow: 'snow', wind: 'breeze' };
 
 function weatherBlock(weather, profile) {
   const data = weather?.available === true ? weather : { temp: '26', condition: '晴', icon: 'sun' };
-  const glyph = WEATHER_ICONS[data.icon] || WEATHER_ICONS.sun;
+  const glyph = icon(WEATHER_ICONS[data.icon] || WEATHER_ICONS.sun);
   const city = (data.city && data.city.trim()) || profile?.city || '';
   const cityHtml = city ? `<span class="weather-city">${escapeHtml(city)}</span>` : '';
   return `<div class="home-weather"><span class="weather-icon">${glyph}</span><div class="weather-meta">${cityHtml}<b>${escapeHtml(data.temp)}℃</b><span>${escapeHtml(data.condition)}</span></div></div><p class="weather-greeting">愿您每一次呼吸都清新自在！</p>`;
