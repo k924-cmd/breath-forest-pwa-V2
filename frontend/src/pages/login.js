@@ -1,1 +1,1 @@
-export { loginPage } from '../components/login.js?v=20260808-20';
+export { loginPage } from '../components/login.js?v=20260808-23';

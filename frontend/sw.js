@@ -1,12 +1,12 @@
-const CACHE_NAME = 'breath-forest-ui-v47';
+const CACHE_NAME = 'breath-forest-ui-v48';
 const CORE_ASSETS = [
-  './', './index.html', './styles.css?v=20260808-22', './manifest.webmanifest', './src/main.js?v=20260808-22',
-  './src/config.js?v=20260808-22', './src/app/state.js?v=20260808-22', './src/components/icons.js?v=20260808-22', './src/components/message-cards.js?v=20260808-22', './src/presentation.js?v=20260808-22', './src/utils/html.js?v=20260808-22',
-  './src/pages/home.js?v=20260808-22', './src/pages/devices.js?v=20260808-22', './src/pages/chat.js?v=20260808-22', './src/pages/profile.js?v=20260808-22',
-  './src/wake/wake-service.js?v=20260808-22',
-  './src/services/conversation-service.js?v=20260808-22', './src/services/device-service.js?v=20260808-22', './src/services/environment-service.js?v=20260808-22',
-  './src/services/asr-service.js?v=20260808-22', './src/services/tts-service.js?v=20260808-22', './src/utils/audio.js?v=20260808-22', './src/utils/feedback.js?v=20260808-22', './src/utils/play-audio.js?v=20260808-22', './src/utils/mic-service.js?v=20260808-22', './src/utils/stream-playback.js?v=20260808-22',
-  './src/mocks/conversation.js?v=20260808-22', './src/mocks/devices.js?v=20260808-22', './src/mocks/environment.js?v=20260808-22',
+  './', './index.html', './styles.css?v=20260808-23', './manifest.webmanifest', './src/main.js?v=20260808-23',
+  './src/config.js?v=20260808-23', './src/app/state.js?v=20260808-23', './src/components/icons.js?v=20260808-23', './src/components/message-cards.js?v=20260808-23', './src/presentation.js?v=20260808-23', './src/utils/html.js?v=20260808-23',
+  './src/pages/home.js?v=20260808-23', './src/pages/devices.js?v=20260808-23', './src/pages/chat.js?v=20260808-23', './src/pages/profile.js?v=20260808-23',
+  './src/wake/wake-service.js?v=20260808-23',
+  './src/services/conversation-service.js?v=20260808-23', './src/services/device-service.js?v=20260808-23', './src/services/environment-service.js?v=20260808-23',
+  './src/services/asr-service.js?v=20260808-23', './src/services/tts-service.js?v=20260808-23', './src/utils/audio.js?v=20260808-23', './src/utils/feedback.js?v=20260808-23', './src/utils/play-audio.js?v=20260808-23', './src/utils/mic-service.js?v=20260808-23', './src/utils/stream-playback.js?v=20260808-23',
+  './src/mocks/conversation.js?v=20260808-23', './src/mocks/devices.js?v=20260808-23', './src/mocks/environment.js?v=20260808-23',
   './vendor/lottie-web.js', './assets/robot.json', './assets/start-robot.json', './assets/ai-flow.json',
   './icons/app-512.png', './icons/app-192.png', './icons/apple-icon.png',
   './assets/device-fan.webp', './assets/device-fresh.webp', './assets/device-hood.webp',
