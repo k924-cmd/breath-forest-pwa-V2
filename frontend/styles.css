@@ -40,6 +40,7 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body, #app { width: 100%; height: 100%; overflow: hidden; }
+html { background: var(--bg); }
 body { margin: 0; background: var(--bg); }
 /* iOS PWA 独立窗口：100% 可能不含底部 Home 条，改用 100vh 铺满视觉视口 */
 @media (display-mode: standalone) {
@@ -67,7 +68,7 @@ button { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   html, body, #app { scroll-behavior: auto; }
 }
-/* 固定环境光斑 · 玻璃透光的底气 */
+/* 固定环境光斑 · 玻璃透光的底气（全屏铺满，不局限于卡片） */
 .app::before {
   content: "";
   position: fixed;
@@ -75,6 +76,8 @@ button { cursor: pointer; }
   inset: 0;
   pointer-events: none;
   background:
+    radial-gradient(circle at 85% 12%, rgba(127, 179, 182, .14), transparent 42%),
+    radial-gradient(circle at 8% 88%, rgba(159, 176, 184, .1), transparent 40%),
     radial-gradient(circle at 80% 4%, rgba(255, 255, 255, .5), transparent 34%),
     radial-gradient(circle at 12% 88%, rgba(232, 238, 240, .4), transparent 30%),
     radial-gradient(circle at 48% 44%, rgba(159, 176, 184, .12), transparent 26%);
@@ -1828,9 +1831,7 @@ h1, h2, p { margin: 0; }
   min-height: 356px;
   border-radius: 26px;
   overflow: visible;
-  background:
-    radial-gradient(circle at 85% 12%, rgba(127, 179, 182, .14), transparent 42%),
-    radial-gradient(circle at 8% 88%, rgba(159, 176, 184, .1), transparent 40%);
+  background: transparent;
   display: flex;
   flex-direction: column;
 }
